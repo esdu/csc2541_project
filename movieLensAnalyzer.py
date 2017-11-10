@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os # For reading files 
 import random
+import sys
 
 # import panda as pd , TODO: Later after fixing Ubuntu
 
@@ -20,7 +21,7 @@ class MovieLensAnalyzer(object):
         self.occupationFile = os.path.join(self.dataDirectory, 'u.occupation')
         self.userFile = os.path.join(self.dataDirectory, 'u.user')
         self.userPreferences= self.parseUserPreference()
-        self.userMovieRatingMatrix = self.parseUserMovieMatrix()
+        self.userMovieRatingMatrix, self.trainRatingMatrix, self.testRatingMatrix = self.parseUserMovieMatrix()
 	self.mask = None
 
     def simplifyMatrix(self, numElements):
@@ -32,6 +33,7 @@ class MovieLensAnalyzer(object):
         '''
         Generates the mask for the userMovieRatingMatrix
         '''
+        # TODO: Make this more efficient
         self.mask = np.ones(self.userMovieRatingMatrix.shape)
         for i in range(self.mask.shape[0]):
 	    for j in range(self.mask.shape[1]):
@@ -82,28 +84,46 @@ class MovieLensAnalyzer(object):
         self.labels = np.zeros(self.userMovieRatingMatrix.shape)
         self.labels[np.where(self.userMovieRatingMatrix >= positiveThresholdRating)] = 1
 
-    def parseUserMovieMatrix(self):
-        # TODO: Sort the user by timestamps for dividing train and test splits
-        # Step1: Sort all the ratings by timestamps
-        # Step2: Create a train matrix from earlier parts of the timestamps
-        # Step3: Create a test matrix from later parts of the timestamps
-        # TODO: Handle case where a user only exist in train or test. 
-        # FixIdea1: Just get intersection of users in train and test and delete those who arent in any of 2.
-        # Step4: Combine both test and train using or operation to get final userRatingMatrix
-        # Step5: Test matrix tells you where you are allowed to explore
-
-        
-        # with open(self.dataFile) as dataFile:
+    def parseUserMovieMatrix(self, trainTestSplit = 0.5):
+        # Sort all the ratings by timestamps
+        arr = list()
         with open(self.dataFile) as dataFile:
-            # Get all the user and movie ratings into ids
-            ratingMatrix = np.zeros((943, 1682)) # 943 users from 1 to 943, 1682 items based on dataset
             for currLine in dataFile:
                 currLine = currLine.strip()
                 if currLine:
                     singleRating = MovieLensRating(*tuple(currLine.split()))
-                    ratingMatrix[singleRating.userId-1][singleRating.movieId-1] = singleRating.rating
-            return ratingMatrix
+                    arr.append(singleRating)
+        # Sorted from earlier timestamp to later timestamp
+        arr.sort()
+        arr = np.array(arr)
+        numRating = arr.size
+        splitIndex = int(trainTestSplit*numRating)
+        trainArr = arr[:splitIndex]
+        testArr = arr[splitIndex:]
 
+        trainRatingMatrix = np.zeros((943, 1682)) # 943 users from 1 to 943, 1682 items based on dataset
+        testRatingMatrix = np.zeros((943, 1682)) # 943 users from 1 to 943, 1682 items based on dataset
+
+        # Create a train matrix from earlier timestamps
+        for trainRating in trainArr:
+            trainRatingMatrix[trainRating.userId-1][trainRating.movieId-1] = trainRating.rating
+
+        # Create test matrix from later timestamps
+        for testRating in testArr:
+            testRatingMatrix[testRating.userId-1][testRating.movieId-1] = testRating.rating
+
+        # TODO: Handle case where a user only exist in train or test. 
+        #   FixIdea1: Just get intersection of users in train and test and delete those who arent in any of 2.
+
+        # Combine both test and train using or operation to get final userRatingMatrix
+        ratingMatrix = np.zeros((943, 1682)) # 943 users from 1 to 943, 1682 items based on dataset
+        ratingMatrix = np.logical_or(trainRatingMatrix, testRatingMatrix)
+
+        return ratingMatrix, trainRatingMatrix, testRatingMatrix
+
+    def legalExploreIndices(self):
+        # TODO: Test matrix tells you where you are allowed to explore
+        print("TODO")
 
 class MovieLensUserPreference(object):
     """ 
@@ -139,6 +159,9 @@ class MovieLensRating(object):
         return (isinstance(other, MovieLensRating) and
                 self.userId, self.movieId, self.rating, self.timeStamp ==
                 other.userId, other.movieId, other.rating, other.timeStamp)
+    
+    def __cmp__(self, other):
+        return cmp(self.timeStamp, other.timeStamp)
     
     def __hash__(self):
         return hash((self.userId, self.movieId, self.rating, self.timeStamp))
