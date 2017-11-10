@@ -118,6 +118,10 @@ class MovieLensAnalyzer(object):
 
         # Combine both test and train using or operation to get final userRatingMatrix
         ratingMatrix = np.zeros((943, 1682)) # 943 users from 1 to 943, 1682 items based on dataset
+	# Uncomment below after testing
+	# ratingMatrix = testRatingMatrix.copy()
+	# Check to make sure its deep copy. 
+	# ratingMatrix[np.where(testRatingMatrix == 0)] = trainRatingMatrix[np.where(trainRatingMatrix == 0)]
         ratingMatrix = np.logical_or(trainRatingMatrix, testRatingMatrix)
 
         return ratingMatrix, trainRatingMatrix, testRatingMatrix
