@@ -76,6 +76,12 @@ class MovieLensAnalyzer(object):
                     userPreferences[userPreference.id] = userPreference
         return userPreferences
 
+    def generatePositiveNegatives(self, positiveThresholdRating):
+        # Divide each cell in userRatingMatrix into 
+        # either positive or negative based on the thresholdRating
+        self.labels = np.zeros(self.userMovieRatingMatrix.shape)
+        self.labels[np.where(self.userMovieRatingMatrix >= positiveThresholdRating)] = 1
+
     def parseUserMovieMatrix(self):
         # TODO: Sort the user by timestamps for dividing train and test splits
         # Step1: Sort all the ratings by timestamps
@@ -85,6 +91,7 @@ class MovieLensAnalyzer(object):
         # FixIdea1: Just get intersection of users in train and test and delete those who arent in any of 2.
         # Step4: Combine both test and train using or operation to get final userRatingMatrix
         # Step5: Test matrix tells you where you are allowed to explore
+
         
         # with open(self.dataFile) as dataFile:
         with open(self.dataFile) as dataFile:
@@ -144,5 +151,7 @@ if __name__ == "__main__":
     movieLensAnalyzer.generateMask(0.3)
     haha = 0.3
     movieLensAnalyzer.generateMask(haha)
+    # Anything rated 3 and above are labeled positive
+    movieLensAnalyzer.generatePositiveNegatives(3)
     print(userMovieRatingMatrix.shape)
 
