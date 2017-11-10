@@ -4,13 +4,13 @@ This class is for analyzing the movie lens dataset.
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
-import os # For reading files 
+import os # For reading files
 import random
 import sys
 
 # import panda as pd , TODO: Later after fixing Ubuntu
 
-class MovieLensAnalyzer(object): 
+class MovieLensAnalyzer(object):
     def __init__(self):
         # Note: Below only works for 100k dataset
         self.currentWorkingDirectory = os.path.abspath(os.path.dirname(__file__))
@@ -22,7 +22,7 @@ class MovieLensAnalyzer(object):
         self.userFile = os.path.join(self.dataDirectory, 'u.user')
         self.userPreferences= self.parseUserPreference()
         self.userMovieRatingMatrix, self.trainRatingMatrix, self.testRatingMatrix = self.parseUserMovieMatrix()
-	self.mask = None
+        self.mask = None
         self.labels = None
 
     def simplifyMatrix(self, numElements):
@@ -37,9 +37,9 @@ class MovieLensAnalyzer(object):
         # TODO: Make this more efficient
         self.mask = np.ones(self.userMovieRatingMatrix.shape)
         for i in range(self.mask.shape[0]):
-	    for j in range(self.mask.shape[1]):
-		if (random.random() < float(percentageZero)):
-		    self.mask[i][j] = 0
+            for j in range(self.mask.shape[1]):
+                if (random.random() < float(percentageZero)):
+                    self.mask[i][j] = 0
 
     def getMaskedUserMovieRatingMatrix(self):
         if self.mask is None:
@@ -62,7 +62,7 @@ class MovieLensAnalyzer(object):
 
     # Evaluation: rmse
     def rootMeanSquareError(self, reconstructionMatrix):
-	return np.sqrt(np.mean((reconstructionMatrix - self.userMovieRatingMatrix)**2))
+        return np.sqrt(np.mean((reconstructionMatrix - self.userMovieRatingMatrix)**2))
 
     # Evaluation: meanAveragePrecision
     def meanAveragePrecision(self, reconstructionMatrix):
@@ -80,7 +80,7 @@ class MovieLensAnalyzer(object):
         return userPreferences
 
     def generatePositiveNegatives(self, positiveThresholdRating):
-        # Divide each cell in userRatingMatrix into 
+        # Divide each cell in userRatingMatrix into
         # either positive or negative based on the thresholdRating
         self.labels = np.zeros(self.userMovieRatingMatrix.shape)
         self.labels[np.where(self.userMovieRatingMatrix >= positiveThresholdRating)] = 1
@@ -113,15 +113,15 @@ class MovieLensAnalyzer(object):
         for testRating in testArr:
             testRatingMatrix[testRating.userId-1][testRating.movieId-1] = testRating.rating
 
-        # TODO: Handle case where a user only exist in train or test. 
+        # TODO: Handle case where a user only exist in train or test.
         #   FixIdea1: Just get intersection of users in train and test and delete those who arent in any of 2.
 
         # Combine both test and train using or operation to get final userRatingMatrix
         ratingMatrix = np.zeros((943, 1682)) # 943 users from 1 to 943, 1682 items based on dataset
-	# Uncomment below after testing
-	# ratingMatrix = testRatingMatrix.copy()
-	# Check to make sure its deep copy. 
-	# ratingMatrix[np.where(testRatingMatrix == 0)] = trainRatingMatrix[np.where(trainRatingMatrix == 0)]
+        # Uncomment below after testing
+        # ratingMatrix = testRatingMatrix.copy()
+        # Check to make sure its deep copy.
+        # ratingMatrix[np.where(testRatingMatrix == 0)] = trainRatingMatrix[np.where(trainRatingMatrix == 0)]
         ratingMatrix = np.logical_or(trainRatingMatrix, testRatingMatrix)
 
         return ratingMatrix, trainRatingMatrix, testRatingMatrix
@@ -131,7 +131,7 @@ class MovieLensAnalyzer(object):
         print("TODO")
 
 class MovieLensUserPreference(object):
-    """ 
+    """
     Data for a movie lens user preference data
     """
 
@@ -144,7 +144,7 @@ class MovieLensUserPreference(object):
 
     def __eq__(self, other):
         return isinstance(other, MovieLensUser) and self.id == other.id
-    
+
     def __hash__(self):
         return hash(self.id)
 
@@ -153,25 +153,26 @@ class MovieLensRating(object):
     UserItemRating
     Represents a single row in user item matrix
     """
-    
+
     def __init__(self, userId, movieId, rating, timeStamp):
         self.userId= int(userId)
         self.movieId = int(movieId)
         self.rating = int(rating)
         self.timeStamp = int(timeStamp)
-    
+
     def __eq__(self, other):
         return (isinstance(other, MovieLensRating) and
                 self.userId, self.movieId, self.rating, self.timeStamp ==
                 other.userId, other.movieId, other.rating, other.timeStamp)
-    
-    def __cmp__(self, other):
-        return cmp(self.timeStamp, other.timeStamp)
-    
+
+    # Use __lt__ for python3 compatibility.
+    def __lt__(self, other):
+        return self.timeStamp < other.timeStamp
+
     def __hash__(self):
         return hash((self.userId, self.movieId, self.rating, self.timeStamp))
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     movieLensAnalyzer = MovieLensAnalyzer()
     movieLensAnalyzer.simplifyMatrix(20)
     # Returns as a numpy array
