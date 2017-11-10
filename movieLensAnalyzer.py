@@ -23,6 +23,7 @@ class MovieLensAnalyzer(object):
         self.userPreferences= self.parseUserPreference()
         self.userMovieRatingMatrix, self.trainRatingMatrix, self.testRatingMatrix = self.parseUserMovieMatrix()
 	self.mask = None
+        self.labels = None
 
     def simplifyMatrix(self, numElements):
         startIndex = 50
