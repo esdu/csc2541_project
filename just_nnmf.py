@@ -4,7 +4,7 @@ import _pickle as cPickle
 from matplotlib import pyplot as plt
 
 class NNMF:
-    def __init__(self, num_users, num_items, user_indices, item_indices, ratings, D=10, D_prime=60, hidden_units_per_layer=50):
+    def __init__(self, num_users, num_items, user_indices, item_indices, ratings, D=2, D_prime=1, hidden_units_per_layer=10):
         self.num_users, self.num_items = num_users, num_items
         self.D = D
         self.D_prime = D_prime
@@ -50,7 +50,7 @@ class NNMF:
             self.fc3b = tf.Variable(tf.random_normal([1], dtype=tf.float32, stddev=1e-1), name='fc3_bias')
             fc3_in = tf.nn.bias_add(tf.matmul(fc2, self.fc3W), self.fc3b)
             self.prediction = tf.reshape(5*tf.nn.sigmoid(fc3_in),shape=[-1])
-            self.nn_parameters += [self.fc2W, self.fc2b]
+            self.nn_parameters += [self.fc3W, self.fc3b]
         
     def build_graph(self):
         self.latent_factors()
@@ -66,6 +66,7 @@ class NNMF:
     
     def load_nn_parameters(self, file, sess):
         trained_nn_parameters = cPickle.load(open(file, "rb"))
+        nn_parameters = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "fc_layers")
         keys = sorted(trained_nn_parameters.keys())
         for i in range(len(self.nn_parameters)):
             sess.run(self.nn_parameters[i].assign(trained_nn_parameters[keys[i]]))
@@ -108,12 +109,13 @@ def train(graph, user_indices, item_indices, ratings, rate, iter, sess):
     train_costs = []
     
     for i in range(iter):
-        graph.nn_vars_update.run(feed_dict={graph.user_indices: user_indices, graph.item_indices: item_indices})
-        graph.latent_vars_update.run(feed_dict={graph.user_indices: user_indices, graph.item_indices: item_indices})
+        graph.nn_vars_update.run(feed_dict={graph.user_indices: user_indices, graph.item_indices: item_indices, graph.ratings:ratings})
+        graph.latent_vars_update.run(feed_dict={graph.user_indices: user_indices, graph.item_indices: item_indices, graph.ratings:ratings})
         
         if (i+1)%5 == 0:
-            print('iteration'+str(i+1))
+            print('iteration '+str(i+1))
             train_cost = sess.run(graph.cost, feed_dict={graph.user_indices:user_indices, graph.item_indices:item_indices, graph.ratings:ratings})
+            print(train_cost)
             train_costs.append(train_cost)       
             
     plt.plot(train_costs)
@@ -130,20 +132,20 @@ def train(graph, user_indices, item_indices, ratings, rate, iter, sess):
     trained_latent_factors = {}
     trained_nn_parameters = {}
     
-    for j in range(len(trained_latent_factors)):
-        trained_latent_factors[latent_factor_names[j]] = latent_factors[j]
+    for j in range(len(latent_factor_names)):
+        trained_latent_factors[latent_factor_names[j]] = sess.run(latent_factors[j])
     
-    for j in range(len(trained_nn_parameters)):
-        trained_nn_parameters[nn_parameter_names[j]]=nn_parameters[j]
-           
+    for j in range(len(nn_parameter_names)):
+        trained_nn_parameters[nn_parameter_names[j]]= sess.run(nn_parameters[j])
+    
     cPickle.dump(trained_latent_factors, open('latent_factors.pkl', 'wb'))
     cPickle.dump(trained_nn_parameters, open('nn_parameters.pkl', 'wb')) 
 
 
 def predict(graph, user_indices, item_indices, latent_factor_file, nn_parameter_file, sess):
     sess.run(tf.global_variables_initializer())
-    graph.model.load_latent_factors(latent_factor_file)
-    graph.model.load_nn_parameters(nn_parameter_file)
+    graph.model.load_latent_factors(latent_factor_file, sess)
+    graph.model.load_nn_parameters(nn_parameter_file, sess)
     return sess.run(graph.model.prediction, feed_dict={graph.user_indices:user_indices, graph.item_indices: item_indices})
 
     
