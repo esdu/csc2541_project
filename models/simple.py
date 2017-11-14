@@ -22,6 +22,9 @@ class SimpleMatrixFactorization:
             draw to estimate the gradient.
             Higher n_sample => more stable gradients.
         """
+        # TODO: How to update this with more data? Right now it needs to retrain from beginning.
+        #       Re-building a graph every time isn't ideal. We need to at least clean up the old graph.
+        #       Workaround: user call tf.reset_default_graph before creating this.
 
         self.R_ = ratings_matrix
         self.mask = mask if mask is not None else ratings_matrix
@@ -51,6 +54,8 @@ class SimpleMatrixFactorization:
                                    scale=tf.Variable(tf.ones([M, D])))
 
         # Testing
+        # Note: It's interesting to look at just the U samples. Clustering that
+        # tells you how many "user preferences" are out there.
         self.U_samples = self.qU.sample(100)
         self.V_samples = self.qV.sample(100)
 
@@ -59,8 +64,6 @@ class SimpleMatrixFactorization:
         self.inference.initialize(scale={self.R: N*M/self.BATCH}, n_iter=n_iter, n_samples=n_samples)
         # Note: global_variables_initializer has to be run after creating inference.
         ed.get_session().run(tf.global_variables_initializer())
-
-        self.trained = False
 
 
     def rhat_samples(self):
@@ -74,7 +77,7 @@ class SimpleMatrixFactorization:
 
     def mse(self):
         R_samples_ = self.rhat_samples()
-        return np.mean(np.square(np.mean(R_samples_, axis=0) - self.R_)[np.where(self.R_)])
+        return np.mean(np.square(np.mean(R_samples_, axis=0) - self.R_)[np.where(self.mask)])
 
 
     def train(self, verbose=False):
