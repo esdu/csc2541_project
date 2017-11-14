@@ -24,6 +24,7 @@ class SimpleMatrixFactorization:
         """
 
         self.R_ = ratings_matrix
+        self.mask = mask if mask is not None else ratings_matrix
         N, M = self.R_.shape
         D = hidden_dim
         self.BATCH = batch_size
@@ -77,7 +78,7 @@ class SimpleMatrixFactorization:
 
 
     def train(self, verbose=False):
-        seen_indices = np.array(np.where(self.R_))
+        seen_indices = np.array(np.where(self.mask))
         info_dicts = []
         for _ in range(self.inference.n_iter):
             # Train on a batch of BATCH_SIZE random elements each iteration.
