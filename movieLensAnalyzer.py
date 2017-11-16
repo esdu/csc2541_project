@@ -8,7 +8,14 @@ import os # For reading files
 import random
 import sys
 
-# import panda as pd , TODO: Later after fixing Ubuntu
+def namestr(obj):
+    namespace = globals()
+    return [name for name in namespace if namespace[name] is obj]
+
+def pprint(obj):
+    # Assumes obj is a numpy array, matrix
+    print(namestr(obj), obj.shape)
+    print(obj)
 
 class MovieLensAnalyzer(object):
     def __init__(self):
@@ -22,43 +29,64 @@ class MovieLensAnalyzer(object):
         self.userFile = os.path.join(self.dataDirectory, 'u.user')
         self.userPreferences= self.parseUserPreference()
         self.userMovieRatingMatrix, self.trainRatingMatrix, self.testRatingMatrix = self.parseUserMovieMatrix()
-        self.mask = None
-        self.labels = None
+
+        # Generate matrices for bandits
+        self.legalUserMovieRatingMatrix = self.generateLegalMoveMatrix(self.userMovieRatingMatrix)
+        self.legalTrainRatingMatrix = self.generateLegalMoveMatrix(self.trainRatingMatrix)
+        self.legalTestRatingMatrix = self.generateLegalMoveMatrix(self.testRatingMatrix)
+
+        # Initialize default mask and labels
+        self.mask = self.generateMask()
+        self.labels = self.generatePositiveNegatives()
+
+    def printMe(self):
+        pprint(self.userMovieRatingMatrix)
+        pprint(self.trainRatingMatrix)
+        pprint(self.testRatingMatrix)
+        pprint(self.legalUserMovieRatingMatrix)
+        pprint(self.legalTrainRatingMatrix)
+        pprint(self.legalTestRatingMatrix)
+        pprint(self.mask)
+        pprint(self.labels)
 
     def simplifyMatrix(self, numElements):
-        startIndex = 50
+        """
+        Make all matrices have numElements only for debugging
+        """
+        # TODO: Randomize below
+        startIndex = 20
         endIndex = startIndex + int(numElements)
         self.userMovieRatingMatrix = self.userMovieRatingMatrix[startIndex:endIndex, startIndex:endIndex]
+        # TODO: train and test do not correspond to actual userMovieRating Split
+        self.trainRatingMatrix = self.trainRatingMatrix[startIndex:endIndex, startIndex:endIndex]
+        self.testRatingMatrix = self.testRatingMatrix[startIndex:endIndex, startIndex:endIndex]
+        self.legalUserMovieRatingMatrix= self.legalUserMovieRatingMatrix[startIndex:endIndex, startIndex:endIndex]
+        self.legalTrainRatingMatrix = self.legalTrainRatingMatrix[startIndex:endIndex, startIndex:endIndex]
+        self.legalTestRatingMatrix = self.legalTestRatingMatrix[startIndex:endIndex, startIndex:endIndex]
+        self.mask = self.mask[startIndex:endIndex, startIndex:endIndex]
+        self.labels= self.labels[startIndex:endIndex, startIndex:endIndex]
 
-    def generateMask(self, percentageZero):
+    def generateMask(self, percentageZero=0.3):
         '''
         Generates the mask for the userMovieRatingMatrix
         '''
-        # TODO: Make this more efficient
-        self.mask = np.ones(self.userMovieRatingMatrix.shape)
-        for i in range(self.mask.shape[0]):
-            for j in range(self.mask.shape[1]):
+        mask = np.ones(self.userMovieRatingMatrix.shape)
+        for i in range(mask.shape[0]):
+            for j in range(mask.shape[1]):
                 if (random.random() < float(percentageZero)):
-                    self.mask[i][j] = 0
+                    mask[i][j] = 0
+        return mask
 
     def getMaskedUserMovieRatingMatrix(self):
         if self.mask is None:
             raise Exception("Masked not initialize using generateMask()")
         return self.userMovieRatingMatrix * self.mask
 
-    def getUserMovieRatingMatrix(self):
-        return self.userMovieRatingMatrix
+    def getLegalMatrix(self):
+        return self.legalUserMovieRatingMatrix, self.legalTrainRatingMatrix, self.legalTestRatingMatrix
 
-        '''
-        # TODO: Later after fixing Ubuntu, right now can't install anything including panda
-        Code below found somewhere online
-        ratings_list = [i.strip().split("::") for i in open(self.dataFile, 'r').readlines()]
-        users_list = [i.strip().split("::") for i in open(self.userFile, 'r').readlines()]
-        movies_list = [i.strip().split("::") for i in open(self.itemFile, 'r').readlines()]
-        ratings_df = pd.DataFrame(ratings_list, columns = ['UserID', 'MovieID', 'Rating', 'Timestamp'], dtype = int)
-        movies_df = pd.DataFrame(movies_list, columns = ['MovieID', 'Title', 'Genres'])
-        movies_df['MovieID'] = movies_df['MovieID'].apply(pd.to_numeric)
-        '''
+    def getUserMovieRatingMatrix(self):
+        return self.userMovieRatingMatrix, self.trainRatingMatrix, self.testRatingMatrix
 
     # Evaluation: rmse
     def rootMeanSquareError(self, reconstructionMatrix):
@@ -79,11 +107,12 @@ class MovieLensAnalyzer(object):
                     userPreferences[userPreference.id] = userPreference
         return userPreferences
 
-    def generatePositiveNegatives(self, positiveThresholdRating):
+    def generatePositiveNegatives(self, positiveThresholdRating=3):
         # Divide each cell in userRatingMatrix into
         # either positive or negative based on the thresholdRating
-        self.labels = np.zeros(self.userMovieRatingMatrix.shape)
-        self.labels[np.where(self.userMovieRatingMatrix >= positiveThresholdRating)] = 1
+        labels = np.zeros(self.userMovieRatingMatrix.shape)
+        labels[np.where(self.userMovieRatingMatrix >= positiveThresholdRating)] = 1
+        return labels
 
     def parseUserMovieMatrix(self, trainTestSplit = 0.5):
         # Sort all the ratings by timestamps
@@ -101,10 +130,8 @@ class MovieLensAnalyzer(object):
         splitIndex = int(trainTestSplit*numRating)
         trainArr = arr[:splitIndex]
         testArr = arr[splitIndex:]
-
         trainRatingMatrix = np.zeros((943, 1682)) # 943 users from 1 to 943, 1682 items based on dataset
         testRatingMatrix = np.zeros((943, 1682)) # 943 users from 1 to 943, 1682 items based on dataset
-
         # Create a train matrix from earlier timestamps
         for trainRating in trainArr:
             trainRatingMatrix[trainRating.userId-1][trainRating.movieId-1] = trainRating.rating
@@ -118,16 +145,25 @@ class MovieLensAnalyzer(object):
 
         # Combine both test and train using or operation to get final userRatingMatrix
         ratingMatrix = np.zeros((943, 1682)) # 943 users from 1 to 943, 1682 items based on dataset
-        # Uncomment below after testing
-        # ratingMatrix = testRatingMatrix.copy()
-        # Check to make sure its deep copy.
-        # ratingMatrix[np.where(testRatingMatrix == 0)] = trainRatingMatrix[np.where(trainRatingMatrix == 0)]
-        ratingMatrix = np.logical_or(trainRatingMatrix, testRatingMatrix)
-
+        ratingMatrix = testRatingMatrix.copy() # Deep copy
+        # Set wherever the later timestamps are 0 to earlier time stamps if those are 0
+        ratingMatrix[np.where(testRatingMatrix == 0)] = trainRatingMatrix[np.where(trainRatingMatrix == 0)]
         return ratingMatrix, trainRatingMatrix, testRatingMatrix
 
-    def legalExploreIndices(self):
-        # TODO: Test matrix tells you where you are allowed to explore
+    def generateLegalMoveMatrix(self, matrixForMask):
+        """
+        Positions where returned matrix are 1 are legal places to explore
+        Note: Must be called before any mask is applied
+        """
+        legalMoveMatrix = np.zeros(matrixForMask.shape)
+        # Places where the rating matrix was not 0 to begin with are legal
+        # i.e. places where it's rated anywhere from [1, 5]
+        legalMoveMatrix[np.where(matrixForMask != 0)] = 1
+        return legalMoveMatrix
+
+    def legalExploreIndices(self, matrixForMask):
+        
+        # Test matrix tells you where you are allowed to xplore
         print("TODO")
 
 class MovieLensUserPreference(object):
@@ -174,13 +210,14 @@ class MovieLensRating(object):
 
 if __name__ == "__main__":
     movieLensAnalyzer = MovieLensAnalyzer()
-    movieLensAnalyzer.simplifyMatrix(20)
-    # Returns as a numpy array
-    userMovieRatingMatrix = movieLensAnalyzer.getUserMovieRatingMatrix()
-    movieLensAnalyzer.generateMask(0.3)
-    haha = 0.3
-    movieLensAnalyzer.generateMask(haha)
+    movieLensAnalyzer.simplifyMatrix(5)
+    # Get the user, train and test as numpy arrays
+    userMovieRatingMatrix, trainRatingMatrix, testRatingMatrix = movieLensAnalyzer.getUserMovieRatingMatrix()
+    legalUserMovieRatingMatrix, legalTrainRatingMatrix, legalTestRatingMatrix = movieLensAnalyzer.getLegalMatrix()
+    movieLensAnalyzer.printMe()
+    '''
+    percentageZero = 0.3
+    movieLensAnalyzer.generateMask(percentageZero)
     # Anything rated 3 and above are labeled positive
     movieLensAnalyzer.generatePositiveNegatives(3)
-    print(userMovieRatingMatrix.shape)
-
+    '''
