@@ -94,8 +94,35 @@ class MovieLensAnalyzer(object):
 
     # Evaluation: meanAveragePrecision
     def meanAveragePrecision(self, reconstructionMatrix):
-        # TODO: Calculate MAP
+        # TODO: Calculate MAP for ratings
         return 0
+
+    # TODO: Evaluate regret as suggested by WeiZhen
+
+    # Evaluate regret as suggested by Eddie
+    def optimalExplorationCalculation(self, discountFactor, legalMoveMatrix, ratingMatrix):
+        # Calculate best score for each user discounted by discount factor
+        sortedMatrix = ratingMatrix.copy()
+        sortedMatrix[np.where(legalMoveMatrix != 1)] = 0
+        # Sort each user's rating
+        sortedMatrix.sort(axis=1)
+        # Sort from increasing to decreasing
+        sortedMatrix = sortedMatrix[:,::-1]
+
+        powers = np.array([range(ratingMatrix.shape[1]) for _ in range(ratingMatrix.shape[0])])
+        regretMatrix = np.ones(ratingMatrix.shape)
+        # Make discount factor the initial values
+        regretMatrix *= discountFactor
+        discounted = np.power(regretMatrix, powers)
+        optimalMatrix = sortedMatrix * discounted
+        optimalResult = np.sum(optimalMatrix, 1)
+        '''
+        pprint(sortedMatrix)
+        pprint(discounted)
+        pprint(optimalMatrix)
+        pprint(optimalResult)
+        '''
+        return optimalResult
 
     def parseUserPreference(self):
         userPreferences = {} # Index each user using the ID as key
@@ -214,10 +241,38 @@ if __name__ == "__main__":
     # Get the user, train and test as numpy arrays
     userMovieRatingMatrix, trainRatingMatrix, testRatingMatrix = movieLensAnalyzer.getUserMovieRatingMatrix()
     legalUserMovieRatingMatrix, legalTrainRatingMatrix, legalTestRatingMatrix = movieLensAnalyzer.getLegalMatrix()
-    movieLensAnalyzer.printMe()
+    #movieLensAnalyzer.printMe()
     '''
     percentageZero = 0.3
     movieLensAnalyzer.generateMask(percentageZero)
     # Anything rated 3 and above are labeled positive
     movieLensAnalyzer.generatePositiveNegatives(3)
     '''
+    discountFactor = 0.99
+    # Get optimal bandit calculation for each user
+    optimalResult = movieLensAnalyzer.optimalExplorationCalculation(discountFactor, legalTrainRatingMatrix, trainRatingMatrix)
+
+    '''
+    if True:
+        ratingMatrix = np.array([[1,2, 3], [4,5,6]])
+        legalMoveMatrix = np.array([[0,1,1], [1,0,1]])
+        pprint(ratingMatrix)
+        pprint(legalMoveMatrix)
+        sortedMatrix = ratingMatrix.copy()
+        sortedMatrix[np.where(legalMoveMatrix != 1)] = 0
+        # Sort each user's rating
+        sortedMatrix.sort(axis=1)
+        # Sort from increasing to decreasing
+        sortedMatrix = sortedMatrix[:,::-1]
+
+        powers = np.array([range(ratingMatrix.shape[1]) for _ in range(ratingMatrix.shape[0])])
+        regretMatrix = np.ones(ratingMatrix.shape)
+        # Make discount factor the initial values
+        regretMatrix *= discountFactor
+        discounted = np.power(regretMatrix, powers)
+        optimalMatrix = sortedMatrix * discounted
+        pprint(sortedMatrix)
+        pprint(discounted)
+        pprint(optimalMatrix)
+    '''
+
