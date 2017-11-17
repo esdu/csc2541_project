@@ -4,6 +4,15 @@ import random
 import edward as ed
 
 class NNMF_FullVI_Edward(object):
+    '''
+    This class performs
+    Neural Network Matrix Factorization 
+    with 
+    Variational Inference
+
+    Uses Edward library by New York University 
+    '''
+
     def __init__(self, n_users, n_items, latent_dim, latent_dim_p,
                  reg_rate=1., learning_rate=0.01, hidden_units=5):
         self.n_users = n_users
@@ -17,6 +26,7 @@ class NNMF_FullVI_Edward(object):
         self.hidden_units = hidden_units
 
         # TODO this is hacky!
+        # Currently assigns id's based on number of users and number of items
         i_s = []
         j_s = []
         for i in range(self.n_users):
