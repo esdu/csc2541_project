@@ -3,18 +3,14 @@ import tensorflow as tf
 import edward as ed
 
 class SimpleMatrixFactorization:
-    def __init__(self, ratings_matrix, mask=None, hidden_dim=30,
-                 n_iter=1000, batch_size=200, n_samples=1):
+    def __init__(self, ratings_matrix, hidden_dim=30,
+                 batch_size=200, n_samples=1):
         """
         Computes R = UV' with SVI.
 
         :param ratings_matrix: The full ratings matrix.
             Ratings should be positive, and a rating of 0 means unknown rating.
-        :param mask: Same size as ratings_matrix.
-            A 0 indicates to not use this rating, else use this rating.
-            If None given, ratings_matrix will be used as the mask.
         :param hidden_dim: Hidden dim size for for U and V.
-        :param n_iter: How many iterations of SVI to run.
         :param batch_size: For each itration of SVI, how many samples from
             ratings matrix to use.
             Bigger batch => more stable gradients.
@@ -27,7 +23,6 @@ class SimpleMatrixFactorization:
         #       Workaround: user call tf.reset_default_graph before creating this.
 
         self.R_ = ratings_matrix
-        self.mask = mask if mask is not None else ratings_matrix
         N, M = self.R_.shape
         D = hidden_dim
         self.BATCH = batch_size
@@ -61,29 +56,36 @@ class SimpleMatrixFactorization:
 
         # Inference
         self.inference = ed.KLqp({self.U: self.qU, self.V: self.qV}, data={self.R: self.r_ph})
-        self.inference.initialize(scale={self.R: N*M/self.BATCH}, n_iter=n_iter, n_samples=n_samples)
+        self.inference.initialize(scale={self.R: N*M/self.BATCH}, n_samples=n_samples)
         # Note: global_variables_initializer has to be run after creating inference.
         ed.get_session().run(tf.global_variables_initializer())
 
 
-    def rhat_samples(self):
+    def sample_user_ratings(self, user_index):
+        # TODO optimize for each user at a time.
         U_samples_, V_samples_ = ed.get_session().run([self.U_samples, self.V_samples])
         R_samples_ = []
         for i in range(U_samples_.shape[0]):
             R_samples_.append(np.matmul(U_samples_[i], np.transpose(V_samples_[i])))
         R_samples_ = np.array(R_samples_)
-        return R_samples_
+        return np.squeeze(R_samples_[:, user_index, :])
 
 
-    def mse(self):
-        R_samples_ = self.rhat_samples()
-        return np.mean(np.square(np.mean(R_samples_, axis=0) - self.R_)[np.where(self.mask)])
+    #def mse(self):
+    #    R_samples_ = self.rhat_samples()
+    #    return np.mean(np.square(np.mean(R_samples_, axis=0) - self.R_)[np.where(self.mask)])
 
 
-    def train(self, verbose=False):
-        seen_indices = np.array(np.where(self.mask))
+    def train(self, mask, n_iter=1000, verbose=False):
+        """
+        :param mask: Same size as ratings_matrix.
+            A 0 indicates to not use this rating, else use this rating.
+            If None given, ratings_matrix will be used as the mask.
+        :param n_iter: How many iterations of SVI to run.
+        """
+        seen_indices = np.array(np.where(mask))
         info_dicts = []
-        for _ in range(self.inference.n_iter):
+        for _ in range(n_iter):
             # Train on a batch of BATCH_SIZE random elements each iteration.
             rand_idx = np.random.choice(seen_indices.shape[1], self.BATCH, replace=False)
             idx_i_ = seen_indices[0, rand_idx]
@@ -96,7 +98,8 @@ class SimpleMatrixFactorization:
             info_dict = self.inference.update(feed_dict=feed_dict)
             info_dicts.append(info_dict)
 
-            if verbose: self.inference.print_progress(info_dict)
+            # TODO print out progress without using edward
+            #if verbose: self.inference.print_progress(info_dict)
 
         losses = [x['loss'] for x in info_dicts]
         return losses
