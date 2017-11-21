@@ -1,3 +1,6 @@
+'''
+Example of API usage on how to work with this library
+'''
 from sclrecommender.mask import MaskGenerator
 from sclrecommender.mask import RandomMaskGenerator
 # TODO: from sclrecommender.mask import TimeMaskGenerator
@@ -29,7 +32,7 @@ def pprint(obj):
 if __name__ == '__main__':
     # Anything with pprint(numpyVariable) means it is a numpy matrix
     # Step 1: Get data based on dataset specific parser
-    dataDirectory = "ml-100k"
+    dataDirectory ="ml-100k"
     mlp = MovieLensParser(dataDirectory)
     ratingMatrix = mlp.getRatingMatrixCopy()
     pprint(ratingMatrix)
@@ -81,10 +84,8 @@ if __name__ == '__main__':
     banditRunner.setUncertaintyModel(nnmf)
     banditRunner.setBanditChoice(ucb)
 
-    trainRankingMatrix, testRankingMatrix = banditRunner.generateRanking()
-
-    pprint(trainRankingMatrix)
-    pprint(testRankingMatrix)
+    rankingMatrix = banditRunner.generateRanking()
+    pprint(rankingMatrix)
 
     # Step 5: Evaluator
     # Evaluate the ranking matrix that was given
