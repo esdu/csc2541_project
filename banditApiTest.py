@@ -12,8 +12,10 @@ from sclrecommender.matrix import PositiveNegativeMatrix
 from sclrecommender.parser import MovieLensParser
 
 from sclrecommender.bandit.runner import BanditRunner
-from sclrecommender.bandit.model import UncertaintyModel
-from sclrecommender.bandit.choice import BanditChoice
+#from sclrecommender.bandit.model import UncertaintyModel
+from uncertaintyModel import UncertaintyModel
+from banditChoice import BanditChoice
+#from sclrecommender.bandit.choice import BanditChoice
 
 import copy 
 import numpy as np
