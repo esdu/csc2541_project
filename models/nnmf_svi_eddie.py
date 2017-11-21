@@ -5,7 +5,10 @@ import edward as ed
 class NNMF:
     def __init__(self, ratings_matrix, D=30, Dp=50,
                  batch_size=200, n_samples=1,
-                 n_test_samples=100, HIDDEN_UNITS=100):
+                 n_test_samples=100,
+                 nn_units_1=100,
+                 nn_units_2=None,
+                 nn_units_3=None):
         """
         Computes R = UV' with SVI.
 
@@ -20,7 +23,9 @@ class NNMF:
             draw to estimate the gradient.
             Higher n_sample => more stable gradients.
         :param n_test_samples: How many test samples to compute together.
-        :param HIDDEN_UNITS: How many hidden units to use in the 1 hidden layer.
+        :param nn_units_1: How many units to use in the 1st layer.
+        :param nn_units_2: How many units to use in the 2nd layer. If None, don't use second layer.
+        :param nn_units_3: How many units to use in the 3nd layer. If None, don't use third layer.
         """
         # TODO: How to update this with more data? Right now it needs to retrain from beginning.
         #       Re-building a graph every time isn't ideal. We need to at least clean up the old graph.
@@ -30,27 +35,59 @@ class NNMF:
         self.R_ = ratings_matrix
         N, M = self.R_.shape; self.N = N; self.M = M
 
-        # TODO a more flexible way to handle multiple layers of a NN.
-        #HIDDEN_UNITS = 20
-
-        # TODO did the paper use ReLU or Sigmoid?
+        # TODO refactor all this repetitive nn_units_2 is None stuff.
 
         def get_nn_weights():
-            W0 = tf.get_variable(initializer=tf.random_normal([D*2+Dp, HIDDEN_UNITS]), name="W0")
-            b0 = tf.get_variable(initializer=tf.random_normal([1     , HIDDEN_UNITS]), name="b0")
-            W1 = tf.get_variable(initializer=tf.random_normal([HIDDEN_UNITS, 1]), name="W1")
-            b1 = tf.get_variable(initializer=tf.random_normal([1           , 1]), name="b1")
-            return W0, b0, W1, b1
+            if nn_units_3 is not None:
+                W0 = tf.get_variable(initializer=tf.random_normal([D*2+Dp, nn_units_1]), name="W0")
+                b0 = tf.get_variable(initializer=tf.random_normal([1     , nn_units_1]), name="b0")
+                W1 = tf.get_variable(initializer=tf.random_normal([nn_units_1, nn_units_2]), name="W1")
+                b1 = tf.get_variable(initializer=tf.random_normal([1         , nn_units_2]), name="b1")
+                W2 = tf.get_variable(initializer=tf.random_normal([nn_units_2, nn_units_3]), name="W2")
+                b2 = tf.get_variable(initializer=tf.random_normal([1         , nn_units_3]), name="b2")
+                W3 = tf.get_variable(initializer=tf.random_normal([nn_units_3, 1]), name="W3")
+                b3 = tf.get_variable(initializer=tf.random_normal([1         , 1]), name="b3")
+                return W0, b0, W1, b1, W2, b2, W3, b3
+            elif nn_units_2 is not None:
+                W0 = tf.get_variable(initializer=tf.random_normal([D*2+Dp, nn_units_1]), name="W0")
+                b0 = tf.get_variable(initializer=tf.random_normal([1     , nn_units_1]), name="b0")
+                W1 = tf.get_variable(initializer=tf.random_normal([nn_units_1, nn_units_2]), name="W1")
+                b1 = tf.get_variable(initializer=tf.random_normal([1         , nn_units_2]), name="b1")
+                W2 = tf.get_variable(initializer=tf.random_normal([nn_units_2, 1]), name="W2")
+                b2 = tf.get_variable(initializer=tf.random_normal([1         , 1]), name="b2")
+                return W0, b0, W1, b1, W2, b2
+            else:
+                W0 = tf.get_variable(initializer=tf.random_normal([D*2+Dp, nn_units_1]), name="W0")
+                b0 = tf.get_variable(initializer=tf.random_normal([1     , nn_units_1]), name="b0")
+                W1 = tf.get_variable(initializer=tf.random_normal([nn_units_1, 1]), name="W1")
+                b1 = tf.get_variable(initializer=tf.random_normal([1         , 1]), name="b1")
+                return W0, b0, W1, b1
 
         def neural_net(x):
             """
             @param x <(None, 2*D+Dp) float>: input to the neural net
             """
-            W0, b0, W1, b1 = get_nn_weights()
+            if nn_units_3 is not None:
+                W0, b0, W1, b1, W2, b2, W3, b3 = get_nn_weights()
 
-            z0 = tf.nn.sigmoid(tf.matmul(x , W0) + b0)
-            z1 = tf.matmul(z0, W1) + b1
-            return z1
+                z0 = tf.nn.sigmoid(tf.matmul(x , W0) + b0)
+                z1 = tf.nn.sigmoid(tf.matmul(z0, W1) + b1)
+                z2 = tf.nn.sigmoid(tf.matmul(z1, W2) + b2)
+                z3 = tf.matmul(z2, W3) + b3
+                return z2
+            elif nn_units_2 is not None:
+                W0, b0, W1, b1, W2, b2 = get_nn_weights()
+
+                z0 = tf.nn.sigmoid(tf.matmul(x , W0) + b0)
+                z1 = tf.nn.sigmoid(tf.matmul(z0, W1) + b1)
+                z2 = tf.matmul(z1, W2) + b2
+                return z2
+            else:
+                W0, b0, W1, b1 = get_nn_weights()
+
+                z0 = tf.nn.sigmoid(tf.matmul(x , W0) + b0)
+                z1 = tf.matmul(z0, W1) + b1
+                return z1
 
         def neural_net_tensor(x, N_LOOKUP):
             """
@@ -58,8 +95,6 @@ class NNMF:
             TODO get N_LOOKUP by second dim of x
             TODO If I just use 1 function to handle tensor and non-tensor, what is the impact on speed?
             """
-            W0, b0, W1, b1 = get_nn_weights()
-
             # Tensor x Matrix multiplication, see:
             # Note: We can use tf.matmul if the pre- dimensions of the tensors are the same. In other words, matmul doesn't broadcast.
             # https://stackoverflow.com/questions/38235555/tensorflow-matmul-of-input-matrix-with-batch-data
@@ -69,14 +104,51 @@ class NNMF:
             # Error: TensorArray was passed element_shape [?,11] which does not match the Tensor at index 0: [3,7]
             #self.bar = tf.scan(lambda a, x: tf.matmul(x, foo), test_nn_input)
 
-            x_ = tf.reshape(x, [-1, D*2+Dp])
-            z0 = tf.reshape(tf.matmul(x_, W0), [-1, N_LOOKUP, HIDDEN_UNITS]) + b0
-            z0 = tf.nn.sigmoid(z0)
+            if nn_units_3 is not None:
+                W0, b0, W1, b1, W2, b2, W3, b3 = get_nn_weights()
 
-            z0_ = tf.reshape(z0, [-1, HIDDEN_UNITS])
-            z1 = tf.reshape(tf.matmul(z0_, W1), [-1, N_LOOKUP, 1]) + b1
+                x_ = tf.reshape(x, [-1, D*2+Dp])
+                z0 = tf.reshape(tf.matmul(x_, W0), [-1, N_LOOKUP, nn_units_1]) + b0
+                z0 = tf.nn.sigmoid(z0)
 
-            return z1
+                z0_ = tf.reshape(z0, [-1, nn_units_1])
+                z1 = tf.reshape(tf.matmul(z0_, W1), [-1, N_LOOKUP, nn_units_2]) + b1
+                z1 = tf.nn.sigmoid(z1)
+
+                z1_ = tf.reshape(z1, [-1, nn_units_2])
+                z2 = tf.reshape(tf.matmul(z1_, W2), [-1, N_LOOKUP, nn_units_3]) + b2
+                z2 = tf.nn.sigmoid(z2)
+
+                z2_ = tf.reshape(z2, [-1, nn_units_3])
+                z3 = tf.reshape(tf.matmul(z2_, W3), [-1, N_LOOKUP, 1]) + b3
+
+                return z3
+            elif nn_units_2 is not None:
+                W0, b0, W1, b1, W2, b2 = get_nn_weights()
+
+                x_ = tf.reshape(x, [-1, D*2+Dp])
+                z0 = tf.reshape(tf.matmul(x_, W0), [-1, N_LOOKUP, nn_units_1]) + b0
+                z0 = tf.nn.sigmoid(z0)
+
+                z0_ = tf.reshape(z0, [-1, nn_units_1])
+                z1 = tf.reshape(tf.matmul(z0_, W1), [-1, N_LOOKUP, nn_units_2]) + b1
+                z1 = tf.nn.sigmoid(z1)
+
+                z1_ = tf.reshape(z1, [-1, nn_units_2])
+                z2 = tf.reshape(tf.matmul(z1_, W2), [-1, N_LOOKUP, 1]) + b2
+
+                return z2
+            else:
+                W0, b0, W1, b1 = get_nn_weights()
+
+                x_ = tf.reshape(x, [-1, D*2+Dp])
+                z0 = tf.reshape(tf.matmul(x_, W0), [-1, N_LOOKUP, nn_units_1]) + b0
+                z0 = tf.nn.sigmoid(z0)
+
+                z0_ = tf.reshape(z0, [-1, nn_units_1])
+                z1 = tf.reshape(tf.matmul(z0_, W1), [-1, N_LOOKUP, 1]) + b1
+
+                return z1
 
         def create_mat_and_qmat(shape):
             mat = ed.models.Normal(loc=tf.zeros(shape), scale=tf.ones(shape))
@@ -116,7 +188,8 @@ class NNMF:
         #############
         self.inference = ed.KLqp({self.U: self.qU, self.V: self.qV,
                                   self.Up: self.qUp, self.Vp: self.qVp}, data={self.R: self.r_ph})
-        self.inference.initialize(scale={self.R: N*M/self.batch_size}, n_samples=n_samples)
+        self.inference.initialize(scale={self.R: N*M/self.batch_size}, n_samples=n_samples)#,
+                                  #optimizer=tf.train.RMSPropOptimizer(0.0005)) # TODO
         # Note: global_variables_initializer has to be run after creating inference.
         ed.get_session().run(tf.global_variables_initializer())
 
