@@ -20,6 +20,6 @@ class UncertaintyModel(object):
         # Train the weights based on current legalTrainIndices matrix
         pass
 
-    def sample_for_user(self, i):
+    def sample_for_user(self, i, k):
         # return (k, m) matrix of k samples for user i
         return samples
