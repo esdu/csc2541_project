@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 
 # turn off trainable for nn parameters
 class NNMFCore:
-    def __init__(self, U_selected, V_selected, U_prime_selected, V_prime_selected , D, D_prime, hidden_units_per_layer=50, sampling=None):
+    def __init__(self, U_selected, V_selected, U_prime_selected, V_prime_selected , D, D_prime, hidden_units_per_layer=5, sampling=None):
         self.U_selected, self.V_selected, self.U_prime_selected, self.V_prime_selected = U_selected, V_selected, U_prime_selected, V_prime_selected
         self.D = D
         self.D_prime = D_prime
@@ -21,23 +21,23 @@ class NNMFCore:
         
         with tf.variable_scope('nn_parameters', reuse = self.sampling):
             #fc1
-            self.fc1W = tf.get_variable(name='fc1_weights', initializer=tf.random_normal([2*self.D + self.D_prime, self.nhid], dtype=tf.float32, stddev=1e-1))
-            self.fc1b = tf.get_variable(name='fc1_bias', initializer=tf.random_normal([self.nhid], dtype=tf.float32, stddev=1e-1))
+            self.fc1W = tf.get_variable(name='fc1_weights', initializer=tf.random_normal([2*self.D + self.D_prime, self.nhid], dtype=tf.float32, stddev=1.))
+            self.fc1b = tf.get_variable(name='fc1_bias', initializer=tf.random_normal([self.nhid], dtype=tf.float32, stddev=1.))
             fc1_in = tf.nn.bias_add(tf.matmul(self.nn_inputs, self.fc1W), self.fc1b)
             fc1 = tf.nn.sigmoid(fc1_in)
             self.nn_parameters += [self.fc1W, self.fc1b]
             
             #fc2
-            self.fc2W = tf.get_variable(name='fc2_weights', initializer=tf.random_normal([self.nhid, self.nhid], dtype=tf.float32, stddev=1e-1))
-            self.fc2b = tf.get_variable(name='fc2_bias', initializer=tf.random_normal([self.nhid], dtype=tf.float32, stddev=1e-1))
-            fc2_in = tf.nn.bias_add(tf.matmul(fc1, self.fc2W), self.fc2b)
-            fc2 = tf.nn.sigmoid(fc2_in)
-            self.nn_parameters += [self.fc2W, self.fc2b]
+            # self.fc2W = tf.get_variable(name='fc2_weights', initializer=tf.random_normal([self.nhid, self.nhid], dtype=tf.float32, stddev=1e-1))
+            # self.fc2b = tf.get_variable(name='fc2_bias', initializer=tf.random_normal([self.nhid], dtype=tf.float32, stddev=1e-1))
+            # fc2_in = tf.nn.bias_add(tf.matmul(fc1, self.fc2W), self.fc2b)
+            # fc2 = tf.nn.sigmoid(fc2_in)
+            # self.nn_parameters += [self.fc2W, self.fc2b]
             
             #fc3
-            self.fc3W = tf.get_variable(name='fc3_weights', initializer=tf.random_normal([self.nhid, 1], dtype=tf.float32, stddev=1e-1))
-            self.fc3b = tf.get_variable(name='fc3_bias', initializer=tf.random_normal([1], dtype=tf.float32, stddev=1e-1))
-            fc3_in = tf.nn.bias_add(tf.matmul(fc2, self.fc3W), self.fc3b)
+            self.fc3W = tf.get_variable(name='fc3_weights', initializer=tf.random_normal([self.nhid, 1], dtype=tf.float32, stddev=1.))
+            self.fc3b = tf.get_variable(name='fc3_bias', initializer=tf.random_normal([1], dtype=tf.float32, stddev=1.))
+            fc3_in = tf.nn.bias_add(tf.matmul(fc1, self.fc3W), self.fc3b)
             self.prediction = tf.reshape(fc3_in,shape=[-1])
             self.nn_parameters += [self.fc3W, self.fc3b]
             
@@ -54,7 +54,7 @@ class NNMFCore:
             
             
 class SVI_NNMF:
-    def __init__(self, dataset, D=10, D_prime=10, mapping=NNMFCore):
+    def __init__(self, dataset, D=3, D_prime=3, mapping=NNMFCore):
         # infer num_user and num_items from dataset dimension
         self.dataset = dataset
         self.num_users, self.num_items = self.dataset.shape
@@ -63,14 +63,23 @@ class SVI_NNMF:
         self.build_graph()     
     
     def variational_layer(self):
-        self.qU_mu = tf.Variable(tf.random_normal([self.num_users, self.D]))
-        self.qU_var = tf.Variable(tf.random_normal([self.num_users, self.D]))
-        self.qV_mu = tf.Variable(tf.random_normal([self.num_items, self.D]))
-        self.qV_var = tf.Variable(tf.random_normal([self.num_items, self.D]))
-        self.qU_prime_mu = tf.Variable(tf.random_normal([self.num_users, self.D_prime]))
-        self.qU_prime_var = tf.Variable(tf.random_normal([self.num_users, self.D_prime]))
-        self.qV_prime_mu = tf.Variable(tf.random_normal([self.num_items, self.D_prime]))
-        self.qV_prime_var = tf.Variable(tf.random_normal([self.num_items, self.D_prime]))
+        # self.qU_mu = tf.Variable(tf.random_normal([self.num_users, self.D]))
+        # self.qU_var = tf.Variable(tf.random_normal([self.num_users, self.D]))
+        # self.qV_mu = tf.Variable(tf.random_normal([self.num_items, self.D]))
+        # self.qV_var = tf.Variable(tf.random_normal([self.num_items, self.D]))
+        # self.qU_prime_mu = tf.Variable(tf.random_normal([self.num_users, self.D_prime]))
+        # self.qU_prime_var = tf.Variable(tf.random_normal([self.num_users, self.D_prime]))
+        # self.qV_prime_mu = tf.Variable(tf.random_normal([self.num_items, self.D_prime]))
+        # self.qV_prime_var = tf.Variable(tf.random_normal([self.num_items, self.D_prime]))
+        
+        self.qU_mu = tf.Variable(tf.zeros([self.num_users, self.D]))
+        self.qU_var = tf.Variable(tf.ones([self.num_users, self.D]))
+        self.qV_mu = tf.Variable(tf.zeros([self.num_items, self.D]))
+        self.qV_var = tf.Variable(tf.ones([self.num_items, self.D]))
+        self.qU_prime_mu = tf.Variable(tf.zeros([self.num_users, self.D_prime]))
+        self.qU_prime_var = tf.Variable(tf.ones([self.num_users, self.D_prime]))
+        self.qV_prime_mu = tf.Variable(tf.zeros([self.num_items, self.D_prime]))
+        self.qV_prime_var = tf.Variable(tf.ones([self.num_items, self.D_prime]))
         
         self.qU = ed.models.Normal(loc=self.qU_mu, scale=tf.nn.softplus(self.qU_var))
         self.qV = ed.models.Normal(loc=self.qV_mu, scale=tf.nn.softplus(self.qV_var))
@@ -79,10 +88,10 @@ class SVI_NNMF:
     
     def latent_factors(self):
         # Prior
-        self.U = ed.models.Normal(loc=tf.zeros([self.num_users, self.D]), scale=10.0*tf.ones([self.num_users, self.D]))
-        self.V = ed.models.Normal(loc=tf.zeros([self.num_items, self.D]), scale=10.0*tf.ones([self.num_items, self.D]))
-        self.U_prime = ed.models.Normal(loc=tf.zeros([self.num_users, self.D_prime]), scale=10.0*tf.ones([self.num_users, self.D_prime]))
-        self.V_prime = ed.models.Normal(loc=tf.zeros([self.num_items, self.D_prime]), scale=10.0*tf.ones([self.num_items, self.D_prime]))
+        self.U = ed.models.Normal(loc=tf.zeros([self.num_users, self.D]), scale=tf.ones([self.num_users, self.D]))
+        self.V = ed.models.Normal(loc=tf.zeros([self.num_items, self.D]), scale=tf.ones([self.num_items, self.D]))
+        self.U_prime = ed.models.Normal(loc=tf.zeros([self.num_users, self.D_prime]), scale=tf.ones([self.num_users, self.D_prime]))
+        self.V_prime = ed.models.Normal(loc=tf.zeros([self.num_items, self.D_prime]), scale=tf.ones([self.num_items, self.D_prime]))
         
     def feed_forward(self, decoder=NNMFCore, parameter_file=None):
         self.user_indices = tf.placeholder(tf.int32, shape = [None])
@@ -98,12 +107,16 @@ class SVI_NNMF:
         self.decoder = decoder(self.U_selected, self.V_selected, self.U_prime_selected, self.V_prime_selected, self.D, self.D_prime)
         
     def posterior_inference(self):
-        self.R_hats = ed.models.Normal(loc=self.decoder.prediction, scale=0.3*tf.ones(tf.shape(self.decoder.prediction)))
-        ratings_indices = tf.concat([tf.expand_dims(self.user_indices, axis=1), tf.expand_dims(self.item_indices, axis=1)],1)
-        self.ratings_selected = tf.gather_nd(self.ratings, ratings_indices)
+        self.R_hats = ed.models.Normal(loc=self.decoder.prediction, scale=tf.ones(tf.shape(self.decoder.prediction)))
+        #ratings_indices = tf.concat([tf.expand_dims(self.user_indices, axis=1), tf.expand_dims(self.item_indices, axis=1)],1)
+        #self.ratings_selected = tf.gather_nd(self.ratings, ratings_indices)
+        self.ratings_selected = tf.placeholder(tf.float32, shape = [None])
         
         # inference by maximizing ELBO
         self.inference = ed.KLqp({self.U: self.qU, self.V: self.qV, self.U_prime: self.qU_prime, self.V_prime: self.qV_prime}, data={self.R_hats: self.ratings_selected})
+        
+        # criticism
+        self.rms_error = tf.reduce_sum(tf.square(self.ratings_selected-self.decoder.prediction))
         
     def sampling_graph(self):
         # Retrieve for specific user
@@ -128,7 +141,7 @@ class SVI_NNMF:
         # Pass samples through NNMF
         self.sample_decoder = NNMFCore(self.U_samples_full, self.V_samples_full, self.U_prime_samples_full, self.V_prime_samples_full, self.D, self.D_prime, sampling=True)
         self.R_mean_samples = tf.reshape(self.sample_decoder.prediction, [-1,self.num_items])
-        self.R_samples = ed.models.Normal(loc=self.R_mean_samples, scale=0.3*tf.ones(tf.shape(self.R_mean_samples)))
+        self.R_samples = ed.models.Normal(loc=self.R_mean_samples, scale=tf.ones(tf.shape(self.R_mean_samples)))
         
     def build_graph(self):
         self.variational_layer()
@@ -137,17 +150,26 @@ class SVI_NNMF:
         self.posterior_inference()
         self.sampling_graph()         
     
-    def train(self, t_mask, sess=ed.get_session(), n_iter=2000):
+    def train(self, t_mask, sess=ed.get_session(), batch=50, n_iter=4000):
         info_dicts = []
         user_indices, item_indices = np.array(np.where(t_mask))
+        rand_idx = np.random.choice(user_indices.shape[0], batch)
+        
+        user_indices, item_indices = user_indices[rand_idx], item_indices[rand_idx]
+        ratings_selected = self.dataset[user_indices, item_indices]
         
         feed_dict = {
             self.user_indices: user_indices,
             self.item_indices: item_indices,
-            self.ratings: self.dataset
+            self.ratings_selected: ratings_selected
             }
             
         for _ in range(n_iter):
+            # if (_+1)%5 == 0:
+            #     error = sess
+            
+            
+            
             info_dict = self.inference.update(feed_dict=feed_dict)
             info_dicts.append(info_dict)
         losses = [x['loss'] for x in info_dicts]
@@ -160,7 +182,7 @@ class SVI_NNMF:
 
     def sample_user_ratings(self, user_index, num_samples=100, sess=ed.get_session()):
         feed_dict = {self.test_user_index: user_index, self.num_samples: num_samples}
-        return sess.run(self.R_samples, feed_dict=feed_dict)
+        return sess.run(self.R_mean_samples, feed_dict=feed_dict)
     
 
 
