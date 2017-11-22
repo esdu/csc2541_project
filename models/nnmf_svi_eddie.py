@@ -2,159 +2,246 @@ import numpy as np
 import tensorflow as tf
 import edward as ed
 
+# TODO save / load
+# TODO figure out seed
+# TODO hyperparam search
+
+
+def get_nn_weights(nn_layer_dims, mean_W, stddev_W, mean_b, stddev_b):
+    """
+    :param nn_layer_dims <list int>: dimensions of each layer of nn.
+        eg:
+            [255, 50, 50, 1]
+            means an input layer of dim 255,
+                  followed by a hidden layer of dim 50,
+                  followed by a hidden layer of dim 50,
+                  followed by an output layer of dim 1.
+    """
+    params = []
+
+    prv_dim = nn_layer_dims[0]
+    for layer in range(1, len(nn_layer_dims)):
+        cur_dim = nn_layer_dims[layer]
+
+        W = tf.get_variable(initializer=tf.random_normal([prv_dim, cur_dim], mean=mean_W, stddev=stddev_W),
+                            name="W{}".format(layer))
+        b = tf.get_variable(initializer=tf.random_normal([1      , cur_dim], mean=mean_b, stddev=stddev_b),
+                            name="b{}".format(layer))
+        params.append(W)
+        params.append(b)
+
+        prv_dim = cur_dim
+
+    return params
+
+    ## For reference, if we were to code up a 5 layer NN, the params look like this:
+    #
+    #    W0 = tf.get_variable(initializer=tf.random_normal([D*2+Dp, nn_units_1]), name="W0")
+    #    b0 = tf.get_variable(initializer=tf.random_normal([1     , nn_units_1]), name="b0")
+    #    W1 = tf.get_variable(initializer=tf.random_normal([nn_units_1, nn_units_2]), name="W1")
+    #    b1 = tf.get_variable(initializer=tf.random_normal([1         , nn_units_2]), name="b1")
+    #    W2 = tf.get_variable(initializer=tf.random_normal([nn_units_2, nn_units_3]), name="W2")
+    #    b2 = tf.get_variable(initializer=tf.random_normal([1         , nn_units_3]), name="b2")
+    #    W3 = tf.get_variable(initializer=tf.random_normal([nn_units_3, 1]), name="W3")
+    #    b3 = tf.get_variable(initializer=tf.random_normal([1         , 1]), name="b3")
+    #    return W0, b0, W1, b1, W2, b2, W3, b3
+
+
+def neural_net(x, nn_layer_dims, *args):
+    """
+    @param x <(None, 2*D+Dp) float>: input to the neural net
+    """
+    params = get_nn_weights(nn_layer_dims, *args)
+
+    sofar = x
+    for i in range(0, len(params), 2):
+        W, b = params[i:i+2]
+        sofar = tf.matmul(sofar, W) + b
+        if i < len(params)-2: # if not last layer
+            sofar = tf.nn.sigmoid(sofar)
+
+    return sofar
+
+    ## For reference, if we were to code up a 5 layer NN, the params look like this:
+    #
+    #    W0, b0, W1, b1, W2, b2, W3, b3 = get_nn_weights()
+    #    z0 = tf.nn.sigmoid(tf.matmul(x , W0) + b0)
+    #    z1 = tf.nn.sigmoid(tf.matmul(z0, W1) + b1)
+    #    z2 = tf.nn.sigmoid(tf.matmul(z1, W2) + b2)
+    #    z3 = tf.matmul(z2, W3) + b3
+    #    return z3
+
+
+def neural_net_tensor(x, N_LOOKUP, nn_layer_dims, *args):
+    """
+    @param x <(None, None, 2*D+Dp) float>: input to the neural net as a tensor.
+    TODO Does this create a new graph every time it's ran? If so, change N_LOOKUP to a constant equal to number of items.
+    TODO get N_LOOKUP by second dim of x
+    TODO If I just use 1 function to handle tensor and non-tensor, what is the impact on speed?
+    """
+    # Tensor x Matrix multiplication, see:
+    # Note: We can use tf.matmul if the pre- dimensions of the tensors are the same. In other words, matmul doesn't broadcast.
+    # https://stackoverflow.com/questions/38235555/tensorflow-matmul-of-input-matrix-with-batch-data
+    # https://groups.google.com/a/tensorflow.org/forum/#!topic/discuss/4tgsOSxwtkY
+    # https://rdipietro.github.io/tensorflow-scan-examples/
+    # TODO why doesn't scan work??
+    # Error: TensorArray was passed element_shape [?,11] which does not match the Tensor at index 0: [3,7]
+    #self.bar = tf.scan(lambda a, x: tf.matmul(x, foo), test_nn_input)
+
+    params = get_nn_weights(nn_layer_dims, *args)
+
+    prv_dim = nn_layer_dims[0]
+    sofar = x
+    for layer in range(1, len(nn_layer_dims)):
+        cur_dim = nn_layer_dims[layer]
+        W, b = params[2*(layer-1):2*(layer-1)+2]
+
+        inp = tf.reshape(sofar, [-1, prv_dim])
+        sofar = tf.reshape(tf.matmul(inp, W), [-1, N_LOOKUP, cur_dim]) + b
+
+        if layer < len(nn_layer_dims)-1: # if not last layer
+            sofar = tf.nn.sigmoid(sofar)
+
+        prv_dim = cur_dim
+
+    return sofar
+
+    ## For reference, if we were to code up a 5 layer NN, the params look like this:
+
+    #    W0, b0, W1, b1, W2, b2, W3, b3 = get_nn_weights()
+
+    #    x_ = tf.reshape(x, [-1, D*2+Dp])
+    #    z0 = tf.reshape(tf.matmul(x_, W0), [-1, N_LOOKUP, nn_units_1]) + b0
+    #    z0 = tf.nn.sigmoid(z0)
+
+    #    z0_ = tf.reshape(z0, [-1, nn_units_1])
+    #    z1 = tf.reshape(tf.matmul(z0_, W1), [-1, N_LOOKUP, nn_units_2]) + b1
+    #    z1 = tf.nn.sigmoid(z1)
+
+    #    z1_ = tf.reshape(z1, [-1, nn_units_2])
+    #    z2 = tf.reshape(tf.matmul(z1_, W2), [-1, N_LOOKUP, nn_units_3]) + b2
+    #    z2 = tf.nn.sigmoid(z2)
+
+    #    z2_ = tf.reshape(z2, [-1, nn_units_3])
+    #    z3 = tf.reshape(tf.matmul(z2_, W3), [-1, N_LOOKUP, 1]) + b3
+
+    #    return z3
+
+
+def create_mat_and_qmat(shape, pZ_prior_stddev=1.):
+    """
+    :param pZ_prior_stddev: to scale the prior distribution's prior.
+    Note we only parameterize p(Z)'s stddev because it acts as a regularizer.
+    """
+    mat = ed.models.Normal(loc=tf.zeros(shape), scale=pZ_prior_stddev*tf.ones(shape))
+    qmat = ed.models.Normal(loc=tf.Variable(tf.random_normal(shape)),
+                            scale=tf.nn.softplus(tf.Variable(tf.random_normal(shape))))
+    ## For reference, this is what I had before:
+    #mat = ed.models.Normal(loc=tf.zeros(shape), scale=tf.ones(shape))
+    #qmat = ed.models.Normal(loc=tf.Variable(tf.zeros(shape)),
+    #                        scale=tf.Variable(tf.ones(shape)))
+    return mat, qmat
+
+
+def create_optimizer(optimizer, lr_init, lr_decay_steps, lr_decay_rate):
+    """
+    Ripped from: https://github.com/blei-lab/edward/blob/master/edward/inferences/variational_inference.py
+    Also see: https://www.tensorflow.org/api_docs/python/tf/train/exponential_decay
+
+    :return
+        optimizer: the optimizer
+        global_step: variable used to count training step & decrease the learning rate
+    """
+    global_step = tf.Variable(0, trainable=False, name="global_step")
+
+    learning_rate = tf.train.exponential_decay(lr_init, global_step, lr_decay_steps, lr_decay_rate, staircase=True)
+
+    if optimizer == 'gradientdescent':
+        optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+    elif optimizer == 'adadelta':
+        optimizer = tf.train.AdadeltaOptimizer(learning_rate)
+    elif optimizer == 'adagrad':
+        optimizer = tf.train.AdagradOptimizer(learning_rate)
+    elif optimizer == 'momentum':
+        optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
+    elif optimizer == 'adam':
+        optimizer = tf.train.AdamOptimizer(learning_rate)
+    elif optimizer == 'ftrl':
+        optimizer = tf.train.FtrlOptimizer(learning_rate)
+    elif optimizer == 'rmsprop':
+        optimizer = tf.train.RMSPropOptimizer(learning_rate)
+    else:
+        raise ValueError('Optimizer class not found:', optimizer)
+
+    return optimizer, global_step
+
+
 class NNMF:
-    def __init__(self, ratings_matrix, D=30, Dp=50,
+    def __init__(self, ratings_matrix,
+                 D=30, Dp=50, pZ_prior_stddev=1., pR_stddev=1.,
+                 nn_hidden_layer_dims=None, nn_W_init_mean=0., nn_W_init_stddev=1., nn_b_init_mean=0., nn_b_init_stddev=1.,
                  batch_size=200, n_samples=1,
-                 n_test_samples=100,
-                 nn_units_1=100,
-                 nn_units_2=None,
-                 nn_units_3=None):
+                 optimizer='adam', lr_init=0.1, lr_decay_steps=100, lr_decay_rate=0.9):
         """
         Computes R = UV' with SVI.
 
         :param ratings_matrix: The full ratings matrix.
-            Ratings should be positive, and a rating of 0 means unknown rating.
         :param D: Hidden dim size for for U and V.
         :param Dp: Hidden dim size for for Up and Vp.
-        :param batch_size: For each itration of SVI, how many samples from
-            ratings matrix to use.
+        :param pZ_prior_stddev: The prior stddev for p(Z). This effectively acts as a regularizer.
+        :param pR_stddev: The model's stddev, ie. for p(r_{ij}|U,V,U',V').
+        :param nn_hidden_layer_dims <list int>: A list of hidden layer dimensions.
+            eg. [50, 25] -> 2 hidden layers with 50 units and 25 units.
+        :param nn_W_init_mean: for the neural network weights
+        :param nn_W_init_stddev: -
+        :param nn_b_init_mean: -
+        :param nn_b_init_stddev: -
+        :param batch_size: For each itration of SVI, how many samples from ratings matrix to use.
             Bigger batch => more stable gradients.
-        :param n_sample: For each iteration of SVI, how many latent samples to
-            draw to estimate the gradient.
-            Higher n_sample => more stable gradients.
-        :param n_test_samples: How many test samples to compute together.
-        :param nn_units_1: How many units to use in the 1st layer.
-        :param nn_units_2: How many units to use in the 2nd layer. If None, don't use second layer.
-        :param nn_units_3: How many units to use in the 3nd layer. If None, don't use third layer.
+        :param n_samples: For each iteration of SVI, how many latent samples to draw to estimate the gradient.
+            Higher n_samples => more stable gradients. But note it might result in biased gradients.
+        :param optimizer <str>: One of:
+            'gradientdescent'
+            'adadelta'
+            'adagrad'
+            'momentum'
+            'adam'
+            'ftrl'
+            'rmsprop'
+        :param lr_init: Initial learning rate (before decay)
+        :param lr_decay_steps: -
+        :param lr_decay_rate: -
+
+        Learning rate decay is done with tf.train.exponential_decay:
+            decayed_learning_rate = lr_init * lr_decay_rate ^ (global_step / lr_decay_steps)
+
+        Note: It's recommended to run this in a wrapped session. For example:
+
+        ```
+        tf.reset_default_graph()
+        sess = tf.Session()
+        with sess.as_default():
+            model = NNMF(...)
+            model.train(...)
+        sess.close()
+        ```
+
+        TODO the following are not parameterized yet, becaus they don't seem important:
+        - q: mu, var
+        - latent priors: mu
         """
-        # TODO: How to update this with more data? Right now it needs to retrain from beginning.
-        #       Re-building a graph every time isn't ideal. We need to at least clean up the old graph.
-        #       Workaround: user call tf.reset_default_graph before creating this.
+
+        # Require an optimizer (don't use Edward's default)
+        assert optimizer
+
+        # Require at least 1 hidden layer.
+        assert nn_hidden_layer_dims is not None
+        # Prepend input size, append output size.
+        nn_layer_dims = [D*2+Dp] + nn_hidden_layer_dims + [1]
 
         self.batch_size = batch_size
         self.R_ = ratings_matrix
         N, M = self.R_.shape; self.N = N; self.M = M
-
-        # TODO refactor all this repetitive nn_units_2 is None stuff.
-
-        def get_nn_weights():
-            if nn_units_3 is not None:
-                W0 = tf.get_variable(initializer=tf.random_normal([D*2+Dp, nn_units_1]), name="W0")
-                b0 = tf.get_variable(initializer=tf.random_normal([1     , nn_units_1]), name="b0")
-                W1 = tf.get_variable(initializer=tf.random_normal([nn_units_1, nn_units_2]), name="W1")
-                b1 = tf.get_variable(initializer=tf.random_normal([1         , nn_units_2]), name="b1")
-                W2 = tf.get_variable(initializer=tf.random_normal([nn_units_2, nn_units_3]), name="W2")
-                b2 = tf.get_variable(initializer=tf.random_normal([1         , nn_units_3]), name="b2")
-                W3 = tf.get_variable(initializer=tf.random_normal([nn_units_3, 1]), name="W3")
-                b3 = tf.get_variable(initializer=tf.random_normal([1         , 1]), name="b3")
-                return W0, b0, W1, b1, W2, b2, W3, b3
-            elif nn_units_2 is not None:
-                W0 = tf.get_variable(initializer=tf.random_normal([D*2+Dp, nn_units_1]), name="W0")
-                b0 = tf.get_variable(initializer=tf.random_normal([1     , nn_units_1]), name="b0")
-                W1 = tf.get_variable(initializer=tf.random_normal([nn_units_1, nn_units_2]), name="W1")
-                b1 = tf.get_variable(initializer=tf.random_normal([1         , nn_units_2]), name="b1")
-                W2 = tf.get_variable(initializer=tf.random_normal([nn_units_2, 1]), name="W2")
-                b2 = tf.get_variable(initializer=tf.random_normal([1         , 1]), name="b2")
-                return W0, b0, W1, b1, W2, b2
-            else:
-                W0 = tf.get_variable(initializer=tf.random_normal([D*2+Dp, nn_units_1]), name="W0")
-                b0 = tf.get_variable(initializer=tf.random_normal([1     , nn_units_1]), name="b0")
-                W1 = tf.get_variable(initializer=tf.random_normal([nn_units_1, 1]), name="W1")
-                b1 = tf.get_variable(initializer=tf.random_normal([1         , 1]), name="b1")
-                return W0, b0, W1, b1
-
-        def neural_net(x):
-            """
-            @param x <(None, 2*D+Dp) float>: input to the neural net
-            """
-            if nn_units_3 is not None:
-                W0, b0, W1, b1, W2, b2, W3, b3 = get_nn_weights()
-
-                z0 = tf.nn.sigmoid(tf.matmul(x , W0) + b0)
-                z1 = tf.nn.sigmoid(tf.matmul(z0, W1) + b1)
-                z2 = tf.nn.sigmoid(tf.matmul(z1, W2) + b2)
-                z3 = tf.matmul(z2, W3) + b3
-                return z2
-            elif nn_units_2 is not None:
-                W0, b0, W1, b1, W2, b2 = get_nn_weights()
-
-                z0 = tf.nn.sigmoid(tf.matmul(x , W0) + b0)
-                z1 = tf.nn.sigmoid(tf.matmul(z0, W1) + b1)
-                z2 = tf.matmul(z1, W2) + b2
-                return z2
-            else:
-                W0, b0, W1, b1 = get_nn_weights()
-
-                z0 = tf.nn.sigmoid(tf.matmul(x , W0) + b0)
-                z1 = tf.matmul(z0, W1) + b1
-                return z1
-
-        def neural_net_tensor(x, N_LOOKUP):
-            """
-            @param x <(None, None, 2*D+Dp) float>: input to the neural net as a tensor.
-            TODO get N_LOOKUP by second dim of x
-            TODO If I just use 1 function to handle tensor and non-tensor, what is the impact on speed?
-            """
-            # Tensor x Matrix multiplication, see:
-            # Note: We can use tf.matmul if the pre- dimensions of the tensors are the same. In other words, matmul doesn't broadcast.
-            # https://stackoverflow.com/questions/38235555/tensorflow-matmul-of-input-matrix-with-batch-data
-            # https://groups.google.com/a/tensorflow.org/forum/#!topic/discuss/4tgsOSxwtkY
-            # https://rdipietro.github.io/tensorflow-scan-examples/
-            # TODO why doesn't scan work??
-            # Error: TensorArray was passed element_shape [?,11] which does not match the Tensor at index 0: [3,7]
-            #self.bar = tf.scan(lambda a, x: tf.matmul(x, foo), test_nn_input)
-
-            if nn_units_3 is not None:
-                W0, b0, W1, b1, W2, b2, W3, b3 = get_nn_weights()
-
-                x_ = tf.reshape(x, [-1, D*2+Dp])
-                z0 = tf.reshape(tf.matmul(x_, W0), [-1, N_LOOKUP, nn_units_1]) + b0
-                z0 = tf.nn.sigmoid(z0)
-
-                z0_ = tf.reshape(z0, [-1, nn_units_1])
-                z1 = tf.reshape(tf.matmul(z0_, W1), [-1, N_LOOKUP, nn_units_2]) + b1
-                z1 = tf.nn.sigmoid(z1)
-
-                z1_ = tf.reshape(z1, [-1, nn_units_2])
-                z2 = tf.reshape(tf.matmul(z1_, W2), [-1, N_LOOKUP, nn_units_3]) + b2
-                z2 = tf.nn.sigmoid(z2)
-
-                z2_ = tf.reshape(z2, [-1, nn_units_3])
-                z3 = tf.reshape(tf.matmul(z2_, W3), [-1, N_LOOKUP, 1]) + b3
-
-                return z3
-            elif nn_units_2 is not None:
-                W0, b0, W1, b1, W2, b2 = get_nn_weights()
-
-                x_ = tf.reshape(x, [-1, D*2+Dp])
-                z0 = tf.reshape(tf.matmul(x_, W0), [-1, N_LOOKUP, nn_units_1]) + b0
-                z0 = tf.nn.sigmoid(z0)
-
-                z0_ = tf.reshape(z0, [-1, nn_units_1])
-                z1 = tf.reshape(tf.matmul(z0_, W1), [-1, N_LOOKUP, nn_units_2]) + b1
-                z1 = tf.nn.sigmoid(z1)
-
-                z1_ = tf.reshape(z1, [-1, nn_units_2])
-                z2 = tf.reshape(tf.matmul(z1_, W2), [-1, N_LOOKUP, 1]) + b2
-
-                return z2
-            else:
-                W0, b0, W1, b1 = get_nn_weights()
-
-                x_ = tf.reshape(x, [-1, D*2+Dp])
-                z0 = tf.reshape(tf.matmul(x_, W0), [-1, N_LOOKUP, nn_units_1]) + b0
-                z0 = tf.nn.sigmoid(z0)
-
-                z0_ = tf.reshape(z0, [-1, nn_units_1])
-                z1 = tf.reshape(tf.matmul(z0_, W1), [-1, N_LOOKUP, 1]) + b1
-
-                return z1
-
-        def create_mat_and_qmat(shape):
-            mat = ed.models.Normal(loc=tf.zeros(shape), scale=tf.ones(shape))
-            qmat = ed.models.Normal(loc=tf.Variable(tf.zeros(shape)),
-                                    scale=tf.Variable(tf.ones(shape)))
-            return mat, qmat
 
         ############
         # TRAINING #
@@ -165,10 +252,10 @@ class NNMF:
         self.idx_j = tf.placeholder(tf.int32, name="idx_j")
 
         # "Priors" p(Z) and the variational approximating dist q(Z)
-        self.U, self.qU = create_mat_and_qmat([N, D])
-        self.V, self.qV = create_mat_and_qmat([M, D])
-        self.Up, self.qUp = create_mat_and_qmat([N, Dp])
-        self.Vp, self.qVp = create_mat_and_qmat([M, Dp])
+        self.U , self.qU  = create_mat_and_qmat([N, D] , pZ_prior_stddev)
+        self.V , self.qV  = create_mat_and_qmat([M, D] , pZ_prior_stddev)
+        self.Up, self.qUp = create_mat_and_qmat([N, Dp], pZ_prior_stddev)
+        self.Vp, self.qVp = create_mat_and_qmat([M, Dp], pZ_prior_stddev)
 
         # P(X|Z)
         U_selected  = tf.gather(self.U , self.idx_i)
@@ -179,17 +266,21 @@ class NNMF:
         nn_input = tf.concat([U_selected, V_selected, tf.multiply(Up_selected, Vp_selected)], axis=1)
 
         with tf.variable_scope('nn') as nn_scope:
-            means = neural_net(nn_input)
+            means = neural_net(nn_input, nn_layer_dims, nn_W_init_mean, nn_W_init_stddev, nn_b_init_mean, nn_b_init_stddev)
 
-        self.R = ed.models.Normal(loc=tf.squeeze(means), scale=tf.ones(self.batch_size))
+        self.R = ed.models.Normal(loc=tf.squeeze(means), scale=pR_stddev*tf.ones(self.batch_size))
 
         #############
         # Inference #
         #############
         self.inference = ed.KLqp({self.U: self.qU, self.V: self.qV,
                                   self.Up: self.qUp, self.Vp: self.qVp}, data={self.R: self.r_ph})
-        self.inference.initialize(scale={self.R: N*M/self.batch_size}, n_samples=n_samples)#,
-                                  #optimizer=tf.train.RMSPropOptimizer(0.0005)) # TODO
+
+        optimizer, global_step = create_optimizer(optimizer, lr_init, lr_decay_steps, lr_decay_rate)
+
+        self.inference.initialize(scale={self.R: N*M/self.batch_size}, n_samples=n_samples,
+                                  optimizer=optimizer, global_step=global_step)
+
         # Note: global_variables_initializer has to be run after creating inference.
         ed.get_session().run(tf.global_variables_initializer())
 
@@ -198,26 +289,33 @@ class NNMF:
         ###########
         self.test_idx_i = tf.placeholder(tf.int32, name="test_idx_i")
         self.test_idx_j = tf.placeholder(tf.int32, name="test_idx_j")
+        self.n_test_samples = tf.placeholder(tf.int32, name="test_idx_j")
         N_LOOKUP = tf.size(self.test_idx_i)
         # TODO assert tf.size(self.test_idx_i) == tf.size(self.test_idx_j)
 
-        # after gather => (n_test_samples, N_LOOKUP, D or Dp)
-        qU_samples  = tf.gather(self.qU.sample(n_test_samples) , self.test_idx_i, axis=1)
-        qV_samples  = tf.gather(self.qV.sample(n_test_samples) , self.test_idx_j, axis=1)
-        qUp_samples = tf.gather(self.qUp.sample(n_test_samples), self.test_idx_i, axis=1)
-        qVp_samples = tf.gather(self.qVp.sample(n_test_samples), self.test_idx_j, axis=1)
+        # after gather => (self.n_test_samples, N_LOOKUP, D or Dp)
+        qU_samples  = tf.gather(self.qU.sample(self.n_test_samples) , self.test_idx_i, axis=1)
+        qV_samples  = tf.gather(self.qV.sample(self.n_test_samples) , self.test_idx_j, axis=1)
+        qUp_samples = tf.gather(self.qUp.sample(self.n_test_samples), self.test_idx_i, axis=1)
+        qVp_samples = tf.gather(self.qVp.sample(self.n_test_samples), self.test_idx_j, axis=1)
 
-        # shape (n_test_samples, N_LOOKUP, 2*D+Dp)
+        # shape (self.n_test_samples, N_LOOKUP, 2*D+Dp)
         test_nn_input = tf.concat([qU_samples, qV_samples, tf.multiply(qUp_samples, qVp_samples)], axis=-1)
 
         with tf.variable_scope(nn_scope, reuse=True):
-            self.sample_rhats = neural_net_tensor(test_nn_input, N_LOOKUP)
+            self.sample_rhats = neural_net_tensor(test_nn_input, N_LOOKUP,
+                                                  nn_layer_dims, nn_W_init_mean, nn_W_init_stddev, nn_b_init_mean, nn_b_init_stddev)
 
 
-    def sample_user_ratings(self, user_index):
+    def sample_user_ratings(self, user_index, n_samples=100):
         idx_i = [user_index] * self.M
         idx_j = list(range(self.M))
-        return np.squeeze(ed.get_session().run(self.sample_rhats, {self.test_idx_i:idx_i, self.test_idx_j:idx_j}))
+        feed_dict = {
+            self.test_idx_i: idx_i,
+            self.test_idx_j: idx_j,
+            self.n_test_samples: n_samples
+        }
+        return np.squeeze(ed.get_session().run(self.sample_rhats, feed_dict))
 
 
     def train(self, mask, n_iter=1000, verbose=False):
