@@ -1,11 +1,27 @@
 import numpy as np
 import tensorflow as tf
 import edward as ed
+import _pickle
 
-# TODO save / load
 # TODO figure out seed
 # TODO hyperparam search
 
+def save_graph_parameters(file):
+    sess = ed.get_session()
+    trained_vars = []
+    for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES):
+        trained_vars.append(sess.run(var))    
+    _pickle.dump(trained_vars, open(file, 'wb'))
+    return file 
+
+def load_graph_parameters(file):
+    sess = ed.get_session()
+    trained_vars = _pickle.load(open(file, "rb"))
+    i=0
+    for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES):
+        sess.run(var.assign(trained_vars[i]))
+        i += 1
+    return True
 
 def get_nn_weights(nn_layer_dims, mean_W, stddev_W, mean_b, stddev_b):
     """
@@ -174,6 +190,7 @@ def create_optimizer(optimizer, lr_init, lr_decay_steps, lr_decay_rate):
         raise ValueError('Optimizer class not found:', optimizer)
 
     return optimizer, global_step
+
 
 
 class NNMF:
