@@ -1,6 +1,8 @@
 '''
 Example of API usage on how to work with this library
+Tests almost everything.
 '''
+
 from sclrecommender.mask import MaskGenerator
 from sclrecommender.mask import RandomMaskGenerator
 # TODO: from sclrecommender.mask import TimeMaskGenerator
@@ -9,6 +11,7 @@ from sclrecommender.mask import RandomMaskGenerator
 from sclrecommender.mask import LegalMoveMaskGenerator
 from sclrecommender.matrix import RatingMatrix
 from sclrecommender.matrix import PositiveNegativeMatrix
+from sclrecommender.parser import ExampleParser
 from sclrecommender.parser import MovieLensParser
 
 from sclrecommender.bandit.runner import BanditRunner
@@ -16,6 +19,19 @@ from sclrecommender.bandit.runner import BanditRunner
 from uncertaintyModel import UncertaintyModel
 from banditChoice import BanditChoice
 #from sclrecommender.bandit.choice import BanditChoice
+
+
+from sclrecommender.evaluator import Evaluator
+# Reconstruction Evaluators
+from sclrecommender.evaluator import ReconstructionEvaluator
+from sclrecommender.evaluator import RootMeanSquareError
+from sclrecommender.evaluator import PositiveNegativeEvaluator
+from sclrecommender.evaluator import F1ScoreEvaluator
+# Ranking Evaluators
+from sclrecommender.evaluator import RankingEvaluator
+from sclrecommender.evaluator import BanditEvaluator
+from sclrecommender.evaluator import RecallAtK
+from sclrecommender.evaluator import PrecisionAtK
 
 import copy 
 import numpy as np
@@ -28,15 +44,23 @@ def pprint(obj):
         namespace = globals()
         return [name for name in namespace if namespace[name] is obj]
     # Assumes obj is a numpy array, matrix
-    print(namestr(obj), obj.shape)
+    try:
+        print(namestr(obj), obj.shape)
+    except:
+        print(namestr(obj))
     print(obj)
 
 if __name__ == '__main__':
     # Anything with pprint(numpyVariable) means it is a numpy matrix
     # Step 1: Get data based on dataset specific parser
     dataDirectory ="ml-100k"
-    mlp = MovieLensParser(dataDirectory)
-    ratingMatrix = mlp.getRatingMatrixCopy()
+    # mlp = MovieLensParser(dataDirectory)
+    numUser = 8
+    numItem = 8 
+    exParser = ExampleParser(dataDirectory)
+    ratingMatrix = exParser.getRatingMatrix(numUser, numItem)
+    ratingMatrix[0][0] = 1.0
+    # ratingMatrix = mlp.getRatingMatrixCopy()
     pprint(ratingMatrix)
 
     # Step 2: Generate both Rating Matrix and Label Matrix for evaluation
@@ -64,12 +88,22 @@ if __name__ == '__main__':
 
     trainMatrix = rmTrain.getRatingMatrix()
     testMatrix = rmTest.getRatingMatrix()
+    positiveNegativeMatrix = labelTruth.getPositiveNegativeMatrix()
 
     pprint(trainMatrix)
     pprint(testMatrix)
+    pprint(positiveNegativeMatrix)
+
 
     # Step 4: RecommenderAlgorithm
     # Option 4.1: ReconstructionMatrix: Outputs a reconstruction of actual matrix, known as recommenderMatrix
+
+    reconstructionMatrix = ratingMatrix.copy() # TODO: Calculate reconstruction matrix 
+    reconstructionPrediction = PositiveNegativeMatrix(reconstructionMatrix, positiveThreshold)
+    positiveNegativePredictionMatrix = reconstructionPrediction.getPositiveNegativeMatrix()
+
+    pprint(reconstructionMatrix)
+    pprint(positiveNegativePredictionMatrix)
 
     # Option 4.2: RankingMatrix: Outputs a matrix of ranking for each user or item
     # Bandit Specific, get Legal Move that can be trained on
@@ -90,6 +124,40 @@ if __name__ == '__main__':
     pprint(rankingMatrix)
 
     # Step 5: Evaluator
-    # Evaluate the ranking matrix that was given
 
+    # Option 5.1 Reconstruction Matrix evaluators
+    accuracy = ReconstructionEvaluator(ratingMatrix, reconstructionMatrix).evaluate()
+    rmse = RootMeanSquareError(ratingMatrix, reconstructionMatrix).evaluate()
+    f1ScoreEvaluator = F1ScoreEvaluator(ratingMatrix, reconstructionMatrix)
+    f1Score = f1ScoreEvaluator.evaluate()
+    recall = f1ScoreEvaluator.getRecall()
+    precision= f1ScoreEvaluator.getPrecision()
+
+    pprint(accuracy)
+    pprint(rmse)
+    pprint(f1Score)
+    pprint(recall)
+    pprint(precision)
+
+    # Option 5.2  Ranking Matrix evaluators
+    # Evaluate the ranking matrix that was given
+    k = 2
+    meanPrecisionAtK = PrecisionAtK(ratingMatrix, rankingMatrix, positiveThreshold, k).evaluate()
+    meanRecallAtK = RecallAtK(ratingMatrix, rankingMatrix, positiveThreshold, k).evaluate()
+    # meanAverageprecision = MeanAveragePrecision(TODO) # TODO
+
+    # Option 5.3  Bandit evaluators # TODO: Might be able to override rankingMatrix evaluator, think about this!
+    
+
+    # TODO: Recall at k and precision at K for each user
+    pprint(meanRecallAtK) 
+    pprint(meanPrecisionAtK) 
+    #pprint(meanAveragePrecision)
+
+    # TODO: BanditEvaluator, subclasses into 2 different regrets!
+    banditEvaluator = BanditEvaluator(ratingMatrix)
+
+    #pprint(regretBasedOnOptimalRegret)
+    #pprint(regretBasedOnInstantaneousRegret)
+    
     print("DONE TESTING")
