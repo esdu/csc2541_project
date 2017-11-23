@@ -9,17 +9,17 @@ class UncertaintyModel(object):
         Reset seed.
         """
         pass
-    
+
     def save(self, fname):
         return fname
-    
+
     def load(self, fname):
         return True
-    
+
     def train(self, legalTrainIndices):
         # Train the weights based on current legalTrainIndices matrix
         pass
 
     def sample_for_user(self, user_index, num_samples):
         # return (k, m) matrix of k samples for user i
-        return samples
+        return None
