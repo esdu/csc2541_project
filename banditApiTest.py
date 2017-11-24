@@ -17,9 +17,9 @@ from sclrecommender.parser import MovieLensParser
 from sclrecommender.bandit.runner import BanditRunner
 #from sclrecommender.bandit.model import UncertaintyModel
 from uncertaintyModel import UncertaintyModel
+from nnmf import NNMF
 from banditChoice import BanditChoice
 #from sclrecommender.bandit.choice import BanditChoice
-
 
 from sclrecommender.evaluator import Evaluator
 # Reconstruction Evaluators
@@ -27,14 +27,20 @@ from sclrecommender.evaluator import ReconstructionEvaluator
 from sclrecommender.evaluator import RootMeanSquareError
 from sclrecommender.evaluator import PositiveNegativeEvaluator
 from sclrecommender.evaluator import F1ScoreEvaluator
+
 # Ranking Evaluators
 from sclrecommender.evaluator import RankingEvaluator
-from sclrecommender.evaluator import BanditEvaluator
 from sclrecommender.evaluator import RecallAtK
 from sclrecommender.evaluator import PrecisionAtK
+from sclrecommender.evaluator import MeanAveragePrecisionAtK
+# TODO: NDCG, used by 2017 paper by Pierre
+
+# Bandit Evaluators 
+from sclrecommender.evaluator import RegretOptimalEvaluator
 
 import copy 
 import numpy as np
+import random
 
 def pprint(obj):
     '''
@@ -51,16 +57,22 @@ def pprint(obj):
     print(obj)
 
 if __name__ == '__main__':
+    # seedNum =  int(random.random() * 1000)
+    # print("SEEDNUM IS", seedNum)
+    seedNum = 196
+    np.random.seed(seedNum)
+    random.seed(seedNum)
+    
     # Anything with pprint(numpyVariable) means it is a numpy matrix
     # Step 1: Get data based on dataset specific parser
     dataDirectory ="ml-100k"
-    # mlp = MovieLensParser(dataDirectory)
+    mlp = MovieLensParser(dataDirectory)
     numUser = 8
     numItem = 8 
     exParser = ExampleParser(dataDirectory)
     ratingMatrix = exParser.getRatingMatrix(numUser, numItem)
     ratingMatrix[0][0] = 1.0
-    # ratingMatrix = mlp.getRatingMatrixCopy()
+    ratingMatrix = mlp.getRatingMatrixCopy()
     pprint(ratingMatrix)
 
     # Step 2: Generate both Rating Matrix and Label Matrix for evaluation
@@ -115,7 +127,8 @@ if __name__ == '__main__':
 
     banditRunner = BanditRunner(ratingMatrix, legalTrainMask, legalTestMask)
 
-    nnmf = UncertaintyModel(ratingMatrix) # TODO: Use actual model
+    #nnmf = UncertaintyModel(ratingMatrix) # TODO: Use actual model
+    nnmf = NNMF(ratingMatrix) # TODO: Use actual model
     ucb = BanditChoice() # TODO: Use actual choice
     banditRunner.setUncertaintyModel(nnmf)
     banditRunner.setBanditChoice(ucb)
@@ -140,24 +153,24 @@ if __name__ == '__main__':
     pprint(precision)
 
     # Option 5.2  Ranking Matrix evaluators
+    # Option 5.2.1 Confusion Matrix evaluators
     # Evaluate the ranking matrix that was given
     k = 2
     meanPrecisionAtK = PrecisionAtK(ratingMatrix, rankingMatrix, positiveThreshold, k).evaluate()
     meanRecallAtK = RecallAtK(ratingMatrix, rankingMatrix, positiveThreshold, k).evaluate()
-    # meanAverageprecision = MeanAveragePrecision(TODO) # TODO
+    meanAveragePrecisionAtK = MeanAveragePrecisionAtK(ratingMatrix, rankingMatrix, positiveThreshold, k).evaluate()
 
-    # Option 5.3  Bandit evaluators # TODO: Might be able to override rankingMatrix evaluator, think about this!
-    
+    pprint(meanRecallAtK) # meanRecallAtK 
+    pprint(meanPrecisionAtK) # meanPrecisionAtK 
+    pprint(meanAveragePrecisionAtK)
 
-    # TODO: Recall at k and precision at K for each user
-    pprint(meanRecallAtK) 
-    pprint(meanPrecisionAtK) 
-    #pprint(meanAveragePrecision)
-
+    # Option 5.2.2  Bandit evaluators 
     # TODO: BanditEvaluator, subclasses into 2 different regrets!
-    banditEvaluator = BanditEvaluator(ratingMatrix)
+    discountFactor = 0.99
+    regretBasedOnOptimalRegret = RegretOptimalEvaluator(ratingMatrix, rankingMatrix, discountFactor).evaluate()
 
-    #pprint(regretBasedOnOptimalRegret)
+    pprint(regretBasedOnOptimalRegret)
+
     #pprint(regretBasedOnInstantaneousRegret)
     
     print("DONE TESTING")
