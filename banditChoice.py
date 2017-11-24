@@ -28,7 +28,6 @@ class BanditChoice(object):
 
         idx = np.argmax(uquantile_ratings)
         selected_item = user_indices[idx]
-        print('item selected: ', selected_item)
 
         return selected_item
 
