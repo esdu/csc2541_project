@@ -37,6 +37,7 @@ from sclrecommender.evaluator import MeanAveragePrecisionAtK
 
 # Bandit Evaluators 
 from sclrecommender.evaluator import RegretOptimalEvaluator
+from sclrecommender.evaluator import RegretInstantaneousEvaluator
 
 import copy 
 import numpy as np
@@ -168,9 +169,9 @@ if __name__ == '__main__':
     # TODO: BanditEvaluator, subclasses into 2 different regrets!
     discountFactor = 0.99
     regretBasedOnOptimalRegret = RegretOptimalEvaluator(ratingMatrix, rankingMatrix, discountFactor).evaluate()
+    regretBasedOnInstantaneousRegret = RegretInstantaneousEvaluator(ratingMatrix, rankingMatrix, discountFactor, legalTestMask, orderChoices).evaluate()
 
     pprint(regretBasedOnOptimalRegret)
+    pprint(regretBasedOnInstantaneousRegret)
 
-    #pprint(regretBasedOnInstantaneousRegret)
-    
     print("DONE TESTING")
