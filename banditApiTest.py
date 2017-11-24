@@ -43,6 +43,8 @@ import copy
 import numpy as np
 import random
 
+import sys
+
 def pprint(obj):
     '''
     For debugging, print statements with numpy variable names and shape
@@ -103,10 +105,7 @@ if __name__ == '__main__':
     testMatrix = rmTest.getRatingMatrix()
     positiveNegativeMatrix = labelTruth.getPositiveNegativeMatrix()
 
-    pprint(trainMatrix)
-    pprint(testMatrix)
-    pprint(positiveNegativeMatrix)
-
+    pprint(np.sum(trainMatrix))
 
     # Step 4: RecommenderAlgorithm
     # Option 4.1: ReconstructionMatrix: Outputs a reconstruction of actual matrix, known as recommenderMatrix
@@ -125,6 +124,10 @@ if __name__ == '__main__':
 
     pprint(legalTrainMask)
     pprint(legalTestMask)
+    sumLegalTrainMask = np.sum(legalTrainMask)
+    sumLegalTestMask = np.sum(legalTestMask)
+    if sumLegalTrainMask == 0 or sumLegalTestMask == 0:
+        raise Exception("Something is initialize to zero!")
 
     banditRunner = BanditRunner(ratingMatrix, legalTrainMask, legalTestMask)
 
