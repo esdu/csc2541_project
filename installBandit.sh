@@ -16,7 +16,7 @@ sudo pip install . --upgrade
 #sudo pip3 install . --upgrade
 
 # Execute api example
-python main.py
+#python main.py
 # python3 main.py, for SCL's computer
 #-------------------------------
 # Remove temporary files
