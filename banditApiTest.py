@@ -172,9 +172,12 @@ if __name__ == '__main__':
     # TODO: BanditEvaluator, subclasses into 2 different regrets!
     discountFactor = 0.99
     regretBasedOnOptimalRegret = RegretOptimalEvaluator(ratingMatrix, rankingMatrix, discountFactor).evaluate()
-    regretBasedOnInstantaneousRegret = RegretInstantaneousEvaluator(ratingMatrix, rankingMatrix, discountFactor, legalTestMask, orderChoices).evaluate()
+    instantaneousRegret = RegretInstantaneousEvaluator(ratingMatrix, rankingMatrix, discountFactor, legalTestMask, orderChoices)
+    regretBasedOnInstantaneousRegret = instantaneousRegret.evaluate()
+    cumulativeInstantaneousRegret =  instantaneousRegret.getCumulativeInstantaneousRegret()
 
     pprint(regretBasedOnOptimalRegret)
     pprint(regretBasedOnInstantaneousRegret)
+    pprint(cumulativeInstantaneousRegret)
 
     print("DONE TESTING")
