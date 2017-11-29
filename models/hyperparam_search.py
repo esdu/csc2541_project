@@ -5,51 +5,96 @@ import tensorflow as tf
 from nnmf_svi_eddie import save_graph_parameters
 from nnmf_svi_eddie import NNMF
 
-def get_hypers_config(seed):
+VERSION = 3
+
+def get_hypers_config(seed, version=VERSION):
     import random
     random.seed(seed)
 
-    D = random.randint(5,100)
-    Dp = random.randint(5,100)
+    if version == 2:
+        D = random.randint(5,100)
+        Dp = random.randint(5,100)
 
-    nn_hidden_layer_dims = []
-    n_layers = random.randint(1,5)
-    for l in range(n_layers):
-        nn_hidden_layer_dims.append(random.randint(5,100))
+        nn_hidden_layer_dims = []
+        n_layers = random.randint(1,5)
+        for l in range(n_layers):
+            nn_hidden_layer_dims.append(random.randint(5,100))
 
-    batch_size = random.randint(100,400)
-    n_samples = random.choice([0,10,100])
+        batch_size = random.randint(100,400)
+        n_samples = random.choice([1,10,100])
 
-    pZ_prior_stddev = random.randrange(200) / 100 # 0 to 2
-    pR_stddev = random.randrange(200) / 100 # 0 to 2
+        pZ_prior_stddev = random.randrange(200) / 100 # 0 to 2
+        pR_stddev = random.randrange(200) / 100 # 0 to 2
 
-    nn_W_init_mean = 0.
-    nn_W_init_stddev = random.randrange(200) / 100 # 0 to 2
-    nn_b_init_mean = 0.
-    nn_b_init_stddev = random.randrange(200) / 100 # 0 to 2
+        nn_W_init_mean = 0.
+        nn_W_init_stddev = random.randrange(200) / 100 # 0 to 2
+        nn_b_init_mean = 0.
+        nn_b_init_stddev = random.randrange(200) / 100 # 0 to 2
 
-    optimizer = 'adam'
-    lr_init = random.choice([0.01,0.1,1.0])
-    lr_decay_steps = random.choice([100,200,300])
-    lr_decay_rate = random.choice([0.9,0.95,0.99])
+        optimizer = 'adam'
+        lr_init = random.choice([0.01,0.1,1.0])
+        lr_decay_steps = random.choice([100,200,300])
+        lr_decay_rate = random.choice([0.9,0.95,0.99])
 
-    return {
-        'D': D,
-        'Dp': Dp,
-        'nn_hidden_layer_dims': nn_hidden_layer_dims,
-        'batch_size': batch_size,
-        'n_samples': n_samples,
-        'pZ_prior_stddev': pZ_prior_stddev,
-        'pR_stddev': pR_stddev,
-        'nn_W_init_mean': nn_W_init_mean,
-        'nn_W_init_stddev': nn_W_init_stddev,
-        'nn_b_init_mean': nn_b_init_mean,
-        'nn_b_init_stddev': nn_b_init_stddev,
-        'optimizer': optimizer,
-        'lr_init': lr_init,
-        'lr_decay_steps': lr_decay_steps,
-        'lr_decay_rate': lr_decay_rate
-    }
+        return {
+            'D': D,
+            'Dp': Dp,
+            'nn_hidden_layer_dims': nn_hidden_layer_dims,
+            'batch_size': batch_size,
+            'n_samples': n_samples,
+            'pZ_prior_stddev': pZ_prior_stddev,
+            'pR_stddev': pR_stddev,
+            'nn_W_init_mean': nn_W_init_mean,
+            'nn_W_init_stddev': nn_W_init_stddev,
+            'nn_b_init_mean': nn_b_init_mean,
+            'nn_b_init_stddev': nn_b_init_stddev,
+            'optimizer': optimizer,
+            'lr_init': lr_init,
+            'lr_decay_steps': lr_decay_steps,
+            'lr_decay_rate': lr_decay_rate
+        }
+    elif version == 3:
+        D  = random.choice([10,35,60])
+        Dp = random.choice([10,35,60])
+
+        nn_hidden_layer_dims = []
+        n_layers = random.randint(2,3)
+        for l in range(n_layers):
+            nn_hidden_layer_dims.append(50)#random.randint(5,100))
+
+        batch_size = 200 #random.randint(100,400)
+        n_samples = 50 #random.choice([1,10,100])
+
+        pZ_prior_stddev = random.choice([0.5,1,1.5]) #random.randrange(200) / 100 # 0 to 2
+        pR_stddev = 1 #random.randrange(200) / 100 # 0 to 2
+
+        nn_W_init_mean = 0.
+        nn_W_init_stddev = (random.randrange(75) + 25) / 100 # 0 to 2
+        nn_b_init_mean = 0.
+        nn_b_init_stddev = (random.randrange(50) + 75) / 100 # 0 to 2
+
+        optimizer = 'adam'
+        lr_init = random.choice([0.005,0.01,0.1])
+        lr_decay_steps = 100 #random.choice([100,200,300])
+        lr_decay_rate = 0.9 #random.choice([0.9,0.95,0.99])
+
+        return {
+            'D': D,
+            'Dp': Dp,
+            'nn_hidden_layer_dims': nn_hidden_layer_dims,
+            'batch_size': batch_size,
+            'n_samples': n_samples,
+            'pZ_prior_stddev': pZ_prior_stddev,
+            'pR_stddev': pR_stddev,
+            'nn_W_init_mean': nn_W_init_mean,
+            'nn_W_init_stddev': nn_W_init_stddev,
+            'nn_b_init_mean': nn_b_init_mean,
+            'nn_b_init_stddev': nn_b_init_stddev,
+            'optimizer': optimizer,
+            'lr_init': lr_init,
+            'lr_decay_steps': lr_decay_steps,
+            'lr_decay_rate': lr_decay_rate
+        }
 
 def save_output_csv(fname, data_list):
     import csv
@@ -191,12 +236,16 @@ if __name__ == '__main__':
     # Run it :)
     #
 
-    for _ in range(100):
+    #for _ in range(100):
+    while True:
         MODEL_NAME = 'NNMF'
         DATASET_NAME = 'TEST'
         SEED = np.random.randint(999999999)
-        N_ITER = 200
-        OUTPUT_FOLDER = 'hypersearch_v2'
+        if VERSION == 2:
+            N_ITER = 200
+        elif VERSION == 3:
+            N_ITER = 500
+        OUTPUT_FOLDER = 'hypersearch_v{}'.format(VERSION)
 
         print('Seed: {}'.format(SEED))
         hypersearch(OUTPUT_FOLDER, MODEL_NAME, DATASET_NAME, SEED, N_ITER, R, TRAIN_MASK, VALID_MASK, verbose=True)
