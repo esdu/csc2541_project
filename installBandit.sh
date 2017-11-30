@@ -17,7 +17,7 @@ sudo pip install . --upgrade
 
 # Execute api example
 #python main.py
-# python3 main.py, for SCL's computer
+# python3 main.py # for SCL's computer
 #-------------------------------
 # Remove temporary files
 find . -name '*.pyc' -delete # Python2
@@ -28,4 +28,4 @@ cd ..
 popd 
 
 python banditApiTest.py
-# python3 banditApiTest.py, for SCL's computer
+# python3 banditApiTest.py # for SCL's computer
