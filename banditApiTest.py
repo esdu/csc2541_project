@@ -9,17 +9,24 @@ from sclrecommender.mask import RandomMaskGenerator
 # TODO: from sclrecommender.mask import ColdUserMaskGenerator
 # TODO: from sclrecommender.mask import ColdItemMaskGenerator
 from sclrecommender.mask import LegalMoveMaskGenerator
+
 from sclrecommender.matrix import RatingMatrix
 from sclrecommender.matrix import PositiveNegativeMatrix
+
+from sclrecommender.analyzer import MatrixAnalyzer
+
 from sclrecommender.parser import ExampleParser
 from sclrecommender.parser import MovieLensParser
 
 from sclrecommender.bandit.runner import BanditRunner
+
 #from sclrecommender.bandit.model import UncertaintyModel
 from uncertaintyModel import UncertaintyModel
 from nnmf import NNMF
 from banditChoice import BanditChoice
-#from sclrecommender.bandit.choice import BanditChoice
+from sclrecommender.bandit.choice import RandomChoice
+
+
 
 from sclrecommender.evaluator import Evaluator
 # Reconstruction Evaluators
@@ -42,13 +49,11 @@ from sclrecommender.evaluator import RegretInstantaneousEvaluator
 import copy 
 import numpy as np
 import random
+import matplotlib.pyplot as plt
 
-import sys
-
+'''
 def pprint(obj):
-    '''
-    For debugging, print statements with numpy variable names and shape
-    '''
+    # For debugging, print statements with numpy variable names and shape
     def namestr(obj):
         namespace = globals()
         return [name for name in namespace if namespace[name] is obj]
@@ -56,59 +61,28 @@ def pprint(obj):
     try:
         print(namestr(obj), obj.shape)
     except:
-        print(namestr(obj))
+        try:
+            print(namestr(obj), ",", len(obj))
+        except:
+            print(namestr(obj))
+    print(obj)
+'''
+def pprint(obj):
     print(obj)
 
-if __name__ == '__main__':
-    # seedNum =  int(random.random() * 1000)
-    # print("SEEDNUM IS", seedNum)
-    seedNum = 196
-    np.random.seed(seedNum)
-    random.seed(seedNum)
-    
-    # Anything with pprint(numpyVariable) means it is a numpy matrix
-    # Step 1: Get data based on dataset specific parser
-    dataDirectory ="ml-100k"
-    mlp = MovieLensParser(dataDirectory)
-    numUser = 8
-    numItem = 8 
-    exParser = ExampleParser(dataDirectory)
-    ratingMatrix = exParser.getRatingMatrix(numUser, numItem)
-    ratingMatrix[0][0] = 1.0
-    ratingMatrix = mlp.getRatingMatrixCopy()
-    pprint(ratingMatrix)
-
-    # Step 2: Generate both Rating Matrix and Label Matrix for evaluation
-    rmTruth = RatingMatrix(ratingMatrix)
+def runAll(nnmf, ucb, ratingMatrix, trainMatrix, testMatrix, modelName):
     positiveThreshold = 3.0 # Threshold to set prediction to positive labels
     labelTruth = PositiveNegativeMatrix(ratingMatrix, positiveThreshold)
 
-    # Step 3: Split rating matrix to train and test
-    trainSplit = 0.8
-
-    # Step 3.1: Choose splitting procedure
-
-    # Option 3.1.1: Random Split
-    randomMaskTrain, randomMaskTest = RandomMaskGenerator(rmTruth.getRatingMatrix(), trainSplit).getMasksCopy()
-
-    #TODO: Option 3.1.2: Split based on time
-    #TODO: Option 3.1.3: Split based on cold users
-    #TODO: Option 3.1.4: Split based on cold items
-   
-    # Step 3.2: Apply mask
-    rmTrain = copy.deepcopy(rmTruth)
-    rmTest = copy.deepcopy(rmTruth)
-    rmTrain.applyMask(randomMaskTrain)
-    rmTest.applyMask(randomMaskTest)
-
-    trainMatrix = rmTrain.getRatingMatrix()
-    testMatrix = rmTest.getRatingMatrix()
     positiveNegativeMatrix = labelTruth.getPositiveNegativeMatrix()
 
-    pprint(np.sum(trainMatrix))
+    pprint(trainMatrix)
+    pprint(testMatrix)
+    pprint(positiveNegativeMatrix)
 
-    # Step 4: RecommenderAlgorithm
-    # Option 4.1: ReconstructionMatrix: Outputs a reconstruction of actual matrix, known as recommenderMatrix
+
+    # Step 5: RecommenderAlgorithm
+    # Option 5.1: ReconstructionMatrix: Outputs a reconstruction of actual matrix, known as recommenderMatrix
 
     reconstructionMatrix = ratingMatrix.copy() # TODO: Calculate reconstruction matrix 
     reconstructionPrediction = PositiveNegativeMatrix(reconstructionMatrix, positiveThreshold)
@@ -117,32 +91,27 @@ if __name__ == '__main__':
     pprint(reconstructionMatrix)
     pprint(positiveNegativePredictionMatrix)
 
-    # Option 4.2: RankingMatrix: Outputs a matrix of ranking for each user or item
+    # Option 5.2: RankingMatrix: Outputs a matrix of ranking for each user or item
     # Bandit Specific, get Legal Move that can be trained on
     legalTrainMask = LegalMoveMaskGenerator(trainMatrix).getMaskCopy()
     legalTestMask = LegalMoveMaskGenerator(testMatrix).getMaskCopy()
 
     pprint(legalTrainMask)
     pprint(legalTestMask)
-    sumLegalTrainMask = np.sum(legalTrainMask)
-    sumLegalTestMask = np.sum(legalTestMask)
-    if sumLegalTrainMask == 0 or sumLegalTestMask == 0:
-        raise Exception("Something is initialize to zero!")
 
-    banditRunner = BanditRunner(ratingMatrix, legalTrainMask, legalTestMask)
-
-    #nnmf = UncertaintyModel(ratingMatrix) # TODO: Use actual model
-    nnmf = NNMF(ratingMatrix) # TODO: Use actual model
-    ucb = BanditChoice() # TODO: Use actual choice
+    banditRunner = BanditRunner(ratingMatrix.copy(), legalTrainMask.copy(), legalTestMask.copy())
     banditRunner.setUncertaintyModel(nnmf)
     banditRunner.setBanditChoice(ucb)
-
+    
     rankingMatrix = banditRunner.generateRanking()
+    orderChoices = banditRunner.getOrderChoices()
+
     pprint(rankingMatrix)
+    pprint(orderChoices)
 
-    # Step 5: Evaluator
+    # Step 6: Evaluator
 
-    # Option 5.1 Reconstruction Matrix evaluators
+    # Option 6.1 Reconstruction Matrix evaluators
     accuracy = ReconstructionEvaluator(ratingMatrix, reconstructionMatrix).evaluate()
     rmse = RootMeanSquareError(ratingMatrix, reconstructionMatrix).evaluate()
     f1ScoreEvaluator = F1ScoreEvaluator(ratingMatrix, reconstructionMatrix)
@@ -156,28 +125,134 @@ if __name__ == '__main__':
     pprint(recall)
     pprint(precision)
 
-    # Option 5.2  Ranking Matrix evaluators
-    # Option 5.2.1 Confusion Matrix evaluators
+    # Option 6.2  Ranking Matrix evaluators
+    # Option 6.2.1 Confusion Matrix evaluators
     # Evaluate the ranking matrix that was given
-    k = 2
+    k = 10 # number of items for each user is 20, so should be less than 20 so recall not guaranteed to be 1
+
+    #-----------------------------------------------------------------------
+    tempMaxNumUser = 10 # TODO TEMPORARY, FOLLOWS NUMBER IN BANDIT RUNNER
+    tempMaxNumItem = 20 # for printing ranking matrix
+    print("TEMP SHRINK TO tempMaxNumUser!")
+    print(ratingMatrix.shape)
+    ratingMatrix = ratingMatrix[:tempMaxNumUser]
+    ratingMatrix = ratingMatrix[:, tempMaxNumItem]
+    legalTestMask = legalTestMask[:tempMaxNumUser]
+    legalTestMask = legalTestMask[:, tempMaxNumItem]
+    rankingMatrix = rankingMatrix[:tempMaxNumUser]
+    rankingMatrix = rankingMatrix[:, tempMaxNumItem]
+    print("Ranking matrix for 10 users and 20 items")
+    print(ratingMatrix.shape)
+    print(rankingMatrix)
+    #-------------------------------------------------------------------------------------------------------
     meanPrecisionAtK = PrecisionAtK(ratingMatrix, rankingMatrix, positiveThreshold, k).evaluate()
     meanRecallAtK = RecallAtK(ratingMatrix, rankingMatrix, positiveThreshold, k).evaluate()
     meanAveragePrecisionAtK = MeanAveragePrecisionAtK(ratingMatrix, rankingMatrix, positiveThreshold, k).evaluate()
+    print("Model: " + str(modelName))
+    print("\nMeanRecallAtK")
+    print(meanRecallAtK) # meanRecallAtK 
+    print("MeanPrecisionAtK")
+    print(meanPrecisionAtK) # meanPrecisionAtK 
+    print("MeanAveragePrecisionAtK")
+    print(meanAveragePrecisionAtK)
 
-    pprint(meanRecallAtK) # meanRecallAtK 
-    pprint(meanPrecisionAtK) # meanPrecisionAtK 
-    pprint(meanAveragePrecisionAtK)
-
-    # Option 5.2.2  Bandit evaluators 
-    # TODO: BanditEvaluator, subclasses into 2 different regrets!
+    # Option 6.2.2  Bandit evaluators 
     discountFactor = 0.99
     regretBasedOnOptimalRegret = RegretOptimalEvaluator(ratingMatrix, rankingMatrix, discountFactor).evaluate()
     instantaneousRegret = RegretInstantaneousEvaluator(ratingMatrix, rankingMatrix, discountFactor, legalTestMask, orderChoices)
     regretBasedOnInstantaneousRegret = instantaneousRegret.evaluate()
     cumulativeInstantaneousRegret =  instantaneousRegret.getCumulativeInstantaneousRegret()
 
+    print("RegretBasedOnOptimalRegret")
     pprint(regretBasedOnOptimalRegret)
+    print("RegretBasedOnInstantaneousRegret")
     pprint(regretBasedOnInstantaneousRegret)
+    print("CumulativeInstantaneousRegret")
     pprint(cumulativeInstantaneousRegret)
+
+    #-----------------------------------------------------------------
+    # TEMP FOR DEBUGGING
+    matrixAnalyzer.summarize() # TEMP FOR DEBUGGING
+    x = list(range(len(cumulativeInstantaneousRegret)))
+    y = cumulativeInstantaneousRegret.copy()
+    #-----------------------------------------------------------------
+    return x, y
+
+        
+
+    #-------------------------------------------------------------------------------------------------------
+
+
+if __name__ == '__main__':
+    # seedNum =  int(random.random() * 1000)
+    # print("SEEDNUM IS", seedNum)
+    seedNum = 196
+    np.random.seed(seedNum)
+    random.seed(seedNum)
+    
+    # Anything with pprint(numpyVariable) means it is a numpy matrix
+    # Step 1: Get data based on dataset specific parser
+    # dataDirectory = "sclrecommender/data/movielens/ml-100k"
+    dataDirectory ="ml-100k"
+    mlp = MovieLensParser(dataDirectory)
+    numUser = 8
+    numItem = 8 
+    exParser = ExampleParser(dataDirectory)
+    ratingMatrix = exParser.getRatingMatrix(numUser, numItem)
+    ratingMatrix[0][0] = 1.0
+    ratingMatrix = mlp.getRatingMatrixCopy()
+
+    # Step 2: Generate both Rating Matrix and Label Matrix for evaluation
+    rmTruth = RatingMatrix(ratingMatrix)
+    # Step 3 Analyze the rating matrix
+    matrixAnalyzer = MatrixAnalyzer(ratingMatrix)
+    matrixAnalyzer.summarize()
+
+    # Step 4: Split rating matrix to train and test
+    trainSplit = 0.8
+
+    # Step 4.1: Choose splitting procedure
+
+    # Option 4.1.1: Random Split
+    randomMaskTrain, randomMaskTest = RandomMaskGenerator(rmTruth.getRatingMatrix(), trainSplit).getMasksCopy()
+
+    #TODO: Option 4.1.2: Split based on time
+    #TODO: Option 4.1.3: Split based on cold users
+    #TODO: Option 4.1.4: Split based on cold items
+   
+    # Step 4.2: Apply mask
+    rmTrain = copy.deepcopy(rmTruth)
+    rmTest = copy.deepcopy(rmTruth)
+    rmTrain.applyMask(randomMaskTrain)
+    rmTest.applyMask(randomMaskTest)
+
+    trainMatrix = rmTrain.getRatingMatrix()
+    testMatrix = rmTest.getRatingMatrix()
+
+    #----------------------------------------
+    nnmf = NNMF(ratingMatrix.copy())
+    ucb = BanditChoice()
+    printString = "NNMF and UCB"
+    x1, y1 = runAll(nnmf, ucb, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), printString)
+
+    print("SAVING FIG!")
+    plt.plot(x1, y1)
+    plt.savefig("/home/soon/Desktop/ucbChoices.png")
+    plt.clf()
+
+    #----------------------------------------
+    um = UncertaintyModel(ratingMatrix.copy())
+    rc = RandomChoice()
+    printString = "Random Choices"
+    x2, y2 = runAll(um, rc, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), printString)
+    plt.plot(x2, y2)
+    plt.savefig("/home/soon/Desktop/randomChoices.png")
+    plt.clf()
+
+    #----------------------------------------
+    plt.plot(x1, y1, x2, y2)
+    plt.savefig("/home/soon/Desktop/bothInOne.png")
+    plt.clf()
+    print("DONE SAVING FIG!")
 
     print("DONE TESTING")
