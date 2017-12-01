@@ -239,19 +239,6 @@ if __name__ == '__main__':
     xLabel = 'Exploration Number'
     yLabel = 'Cumulative Instantaneous Regret'
     #----------------------------------------
-    um = UncertaintyModel(ratingMatrix.copy())
-    optimalChoice = OptimalChoice()
-    modelString4 = "Optimal"
-    x4, y4 = runAll(um, optimalChoice, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString4)
-
-    plt.plot(x4, y4, label=modelString4)
-    plt.legend(loc = 'upper left')
-    plt.xlabel(xLabel)
-    plt.ylabel(yLabel)
-    plt.title(modelString4)
-    plt.savefig("/home/soon/Desktop/optimalChoices.png")
-    plt.clf()
-    #----------------------------------------
     nnmf = NNMF(ratingMatrix.copy())
     ucb = BanditChoice()
     #nnmf = UncertaintyModel(ratingMatrix.copy())
@@ -294,6 +281,19 @@ if __name__ == '__main__':
     plt.ylabel(yLabel)
     plt.title(modelString3)
     plt.savefig("/home/soon/Desktop/randomChoices.png")
+    plt.clf()
+    #----------------------------------------
+    um = UncertaintyModel(ratingMatrix.copy())
+    optimalChoice = OptimalChoice()
+    modelString4 = "Optimal"
+    x4, y4 = runAll(um, optimalChoice, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString4)
+
+    plt.plot(x4, y4, label=modelString4)
+    plt.legend(loc = 'upper left')
+    plt.xlabel(xLabel)
+    plt.ylabel(yLabel)
+    plt.title(modelString4)
+    plt.savefig("/home/soon/Desktop/optimalChoices.png")
     plt.clf()
     #----------------------------------------
     modelString = "All Models"
