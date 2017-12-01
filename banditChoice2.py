@@ -5,7 +5,7 @@ class BanditChoice2(object):
     def __init__(self):
         pass
 
-    def evaluate(self, posteriorMatrix, legalItemVector):
+    def evaluate(self, posteriorMatrix, legalItemVector, ratingMatrixForUser=None):
         # posteriorMatrix = (numSamples, numItems)
         # legalItemVector = (numItems)
         # itemIndex an integer within [0, numItems - 1]
