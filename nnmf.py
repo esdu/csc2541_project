@@ -40,9 +40,9 @@ class NNMF(UncertaintyModel):
         with self.sess.as_default():
             load_graph_parameters(fname)
 
-    def train(self, legalTrainIndices):
+    def train(self, legalTrainIndices, n_iter=1000):
         with self.sess.as_default():
-            losses = self.model.train(mask=legalTrainIndices, n_iter=1000)
+            losses = self.model.train(mask=legalTrainIndices, n_iter=n_iter)
         return losses
 
     def sample_for_user(self, user_index, num_samples):
