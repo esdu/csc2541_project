@@ -25,9 +25,9 @@ from uncertaintyModel import UncertaintyModel
 from nnmf import NNMF
 from banditChoice import BanditChoice # UCB
 from banditChoice2 import BanditChoice2 # Epsilon Greedy
-from sclrecommender.bandit.choice import RandomChoice
-
-
+from sclrecommender.bandit.choice import RandomChoice # A random choice
+from sclrecommender.bandit.choice import OptimalChoice # The optimal choice
+from sclrecommender.bandit.choice import WorstChoice # The worst choice
 
 from sclrecommender.evaluator import Evaluator
 # Reconstruction Evaluators
@@ -72,7 +72,6 @@ def pprint(obj):
     print(obj)
 
 def runAll(nnmf, ucb, ratingMatrix, trainMatrix, testMatrix, modelName):
-    backUpRatingMatrix = ratingMatrix.copy()
     positiveThreshold = 3.0 # Threshold to set prediction to positive labels
     labelTruth = PositiveNegativeMatrix(ratingMatrix, positiveThreshold)
 
@@ -138,18 +137,17 @@ def runAll(nnmf, ucb, ratingMatrix, trainMatrix, testMatrix, modelName):
     print("TEMP SHRINK TO tempMaxNumUser!")
     print(ratingMatrix.shape)
     ratingMatrix = ratingMatrix[:tempMaxNumUser]
-    ratingMatrix = ratingMatrix[:, :tempMaxNumItem] 
+    # Choices were made from any position, so can't reduce rating matrix size by tempMaxNumItem
+    # ratingMatrix = ratingMatrix[:, :tempMaxNumItem]
     print(ratingMatrix.shape)
     print(legalTestMask.shape)
     legalTestMask = legalTestMask[:tempMaxNumUser]
-    legalTestMask = legalTestMask[:, :tempMaxNumItem]
+    # legalTestMask = legalTestMask[:, :tempMaxNumItem]
     print(legalTestMask.shape)
     print(rankingMatrix.shape)
     rankingMatrix = rankingMatrix[:tempMaxNumUser]
-    rankingMatrix = rankingMatrix[:, :tempMaxNumItem]
+    # rankingMatrix = rankingMatrix[:, :tempMaxNumItem]
     print(rankingMatrix.shape)
-    print("Ranking matrix for 10 users and 20 items")
-    print(rankingMatrix)
     #-------------------------------------------------------------------------------------------------------
     meanPrecisionAtK = PrecisionAtK(ratingMatrix, rankingMatrix, positiveThreshold, k).evaluate()
     meanRecallAtK = RecallAtK(ratingMatrix, rankingMatrix, positiveThreshold, k).evaluate()
@@ -165,8 +163,6 @@ def runAll(nnmf, ucb, ratingMatrix, trainMatrix, testMatrix, modelName):
     # Option 6.2.2  Bandit evaluators 
     discountFactor = 0.99
     regretBasedOnOptimalRegret = RegretOptimalEvaluator(ratingMatrix, rankingMatrix, discountFactor).evaluate()
-    ratingMatrix = backUpRatingMatrix
-    ratingMatrix = ratingMatrix[:tempMaxNumUser]
     instantaneousRegret = RegretInstantaneousEvaluator(ratingMatrix, rankingMatrix, discountFactor, legalTestMask, orderChoices)
     regretBasedOnInstantaneousRegret = instantaneousRegret.evaluate()
     cumulativeInstantaneousRegret =  instantaneousRegret.getCumulativeInstantaneousRegret()
@@ -177,6 +173,9 @@ def runAll(nnmf, ucb, ratingMatrix, trainMatrix, testMatrix, modelName):
     pprint(regretBasedOnInstantaneousRegret)
     print("CumulativeInstantaneousRegret")
     pprint(cumulativeInstantaneousRegret)
+
+    print("Ranking matrix for 10 users and 20 items")
+    print(rankingMatrix[:, :tempMaxNumItem])
 
     #-----------------------------------------------------------------
     # TEMP FOR DEBUGGING
@@ -241,22 +240,6 @@ if __name__ == '__main__':
     yLabel = 'Cumulative Instantaneous Regret'
     #----------------------------------------
     nnmf = NNMF(ratingMatrix.copy())
-    egreedy = BanditChoice2()
-    #nnmf = UncertaintyModel(ratingMatrix.copy())
-    #egreedy = RandomChoice()
-    modelString2 = "NNMF, Epsilon Greedy"
-    x2, y2 = runAll(nnmf, egreedy, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString2)
-
-    plt.plot(x1, y1, label=modelString2)
-    plt.legend(loc = 'upper left')
-    plt.xlabel(xLabel)
-    plt.ylabel(yLabel)
-    plt.title(modelString2)
-    plt.savefig("/home/soon/Desktop/epsilonGreedyChoices.png")
-    plt.clf()
-
-    #----------------------------------------
-    nnmf = NNMF(ratingMatrix.copy())
     ucb = BanditChoice()
     #nnmf = UncertaintyModel(ratingMatrix.copy())
     #ucb = RandomChoice()
@@ -272,6 +255,22 @@ if __name__ == '__main__':
     plt.savefig("/home/soon/Desktop/ucbChoices.png")
     plt.clf()
     #----------------------------------------
+    nnmf = NNMF(ratingMatrix.copy())
+    egreedy = BanditChoice2()
+    #nnmf = UncertaintyModel(ratingMatrix.copy())
+    #egreedy = RandomChoice()
+    modelString2 = "NNMF, Epsilon Greedy"
+    x2, y2 = runAll(nnmf, egreedy, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString2)
+
+    plt.plot(x2, y2, label=modelString2)
+    plt.legend(loc = 'upper left')
+    plt.xlabel(xLabel)
+    plt.ylabel(yLabel)
+    plt.title(modelString2)
+    plt.savefig("/home/soon/Desktop/epsilonGreedyChoices.png")
+    plt.clf()
+
+    #----------------------------------------
     um = UncertaintyModel(ratingMatrix.copy())
     rc = RandomChoice()
     modelString3 = "Random"
@@ -283,12 +282,39 @@ if __name__ == '__main__':
     plt.title(modelString3)
     plt.savefig("/home/soon/Desktop/randomChoices.png")
     plt.clf()
+    #----------------------------------------
+    um = UncertaintyModel(ratingMatrix.copy())
+    worstChoice = WorstChoice()
+    modelString4 = "Worst"
+    x4, y4 = runAll(um, worstChoice, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString4)
 
+    plt.plot(x4, y4, label=modelString4)
+    plt.legend(loc = 'upper left')
+    plt.xlabel(xLabel)
+    plt.ylabel(yLabel)
+    plt.title(modelString4)
+    plt.savefig("/home/soon/Desktop/worstChoices.png")
+    plt.clf()
+    #----------------------------------------
+    um = UncertaintyModel(ratingMatrix.copy())
+    optimalChoice = OptimalChoice()
+    modelString5 = "Optimal"
+    x5, y5 = runAll(um, optimalChoice, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString5)
+
+    plt.plot(x5, y5, label=modelString5)
+    plt.legend(loc = 'upper left')
+    plt.xlabel(xLabel)
+    plt.ylabel(yLabel)
+    plt.title(modelString5)
+    plt.savefig("/home/soon/Desktop/optimalChoices.png")
+    plt.clf()
     #----------------------------------------
     modelString = "All Models"
     plt.plot(x1, y1, label=modelString1)
     plt.plot(x2, y2, label=modelString2)
     plt.plot(x3, y3, label=modelString3)
+    plt.plot(x4, y4, label=modelString4)
+    plt.plot(x5, y5, label=modelString5)
     plt.legend(loc = 'upper left')
     plt.xlabel(xLabel)
     plt.ylabel(yLabel)
