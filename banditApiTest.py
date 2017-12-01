@@ -27,7 +27,7 @@ from banditChoice import BanditChoice # UCB
 from banditChoice2 import BanditChoice2 # Epsilon Greedy
 from sclrecommender.bandit.choice import RandomChoice # A random choice
 from sclrecommender.bandit.choice import OptimalChoice # The optimal choice
-# TODO: Worst choice
+from sclrecommender.bandit.choice import WorstChoice # The worst choice
 
 from sclrecommender.evaluator import Evaluator
 # Reconstruction Evaluators
@@ -284,15 +284,28 @@ if __name__ == '__main__':
     plt.clf()
     #----------------------------------------
     um = UncertaintyModel(ratingMatrix.copy())
-    optimalChoice = OptimalChoice()
-    modelString4 = "Optimal"
-    x4, y4 = runAll(um, optimalChoice, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString4)
+    worstChoice = WorstChoice()
+    modelString4 = "Worst"
+    x4, y4 = runAll(um, worstChoice, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString4)
 
     plt.plot(x4, y4, label=modelString4)
     plt.legend(loc = 'upper left')
     plt.xlabel(xLabel)
     plt.ylabel(yLabel)
     plt.title(modelString4)
+    plt.savefig("/home/soon/Desktop/worstChoices.png")
+    plt.clf()
+    #----------------------------------------
+    um = UncertaintyModel(ratingMatrix.copy())
+    optimalChoice = OptimalChoice()
+    modelString5 = "Optimal"
+    x5, y5 = runAll(um, optimalChoice, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString5)
+
+    plt.plot(x5, y5, label=modelString5)
+    plt.legend(loc = 'upper left')
+    plt.xlabel(xLabel)
+    plt.ylabel(yLabel)
+    plt.title(modelString5)
     plt.savefig("/home/soon/Desktop/optimalChoices.png")
     plt.clf()
     #----------------------------------------
@@ -301,6 +314,7 @@ if __name__ == '__main__':
     plt.plot(x2, y2, label=modelString2)
     plt.plot(x3, y3, label=modelString3)
     plt.plot(x4, y4, label=modelString4)
+    plt.plot(x5, y5, label=modelString5)
     plt.legend(loc = 'upper left')
     plt.xlabel(xLabel)
     plt.ylabel(yLabel)
