@@ -23,7 +23,8 @@ from sclrecommender.bandit.runner import BanditRunner
 #from sclrecommender.bandit.model import UncertaintyModel
 from uncertaintyModel import UncertaintyModel
 from nnmf import NNMF
-from banditChoice import BanditChoice
+from banditChoice import BanditChoice # UCB
+from banditChoice2 import BanditChoice2 # Epsilon Greedy
 from sclrecommender.bandit.choice import RandomChoice
 
 
@@ -236,29 +237,63 @@ if __name__ == '__main__':
     trainMatrix = rmTrain.getRatingMatrix()
     testMatrix = rmTest.getRatingMatrix()
 
+    xLabel = 'Exploration Number'
+    yLabel = 'Cumulative Instantaneous Regret'
     #----------------------------------------
     nnmf = NNMF(ratingMatrix.copy())
-    ucb = BanditChoice()
-    printString = "NNMF and UCB"
-    x1, y1 = runAll(nnmf, ucb, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), printString)
+    egreedy = BanditChoice2()
+    #nnmf = UncertaintyModel(ratingMatrix.copy())
+    #egreedy = RandomChoice()
+    modelString2 = "NNMF, Epsilon Greedy"
+    x2, y2 = runAll(nnmf, egreedy, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString2)
 
-    print("SAVING FIG!")
-    plt.plot(x1, y1)
-    plt.savefig("/home/soon/Desktop/ucbChoices.png")
+    plt.plot(x1, y1, label=modelString2)
+    plt.legend(loc = 'upper left')
+    plt.xlabel(xLabel)
+    plt.ylabel(yLabel)
+    plt.title(modelString2)
+    plt.savefig("/home/soon/Desktop/epsilonGreedyChoices.png")
     plt.clf()
 
     #----------------------------------------
+    nnmf = NNMF(ratingMatrix.copy())
+    ucb = BanditChoice()
+    #nnmf = UncertaintyModel(ratingMatrix.copy())
+    #ucb = RandomChoice()
+    modelString1 = "NNMF, UCB"
+    x1, y1 = runAll(nnmf, ucb, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString1)
+
+    print("SAVING FIG!")
+    plt.plot(x1, y1, label=modelString1)
+    plt.legend(loc = 'upper left')
+    plt.xlabel(xLabel)
+    plt.ylabel(yLabel)
+    plt.title(modelString1)
+    plt.savefig("/home/soon/Desktop/ucbChoices.png")
+    plt.clf()
+    #----------------------------------------
     um = UncertaintyModel(ratingMatrix.copy())
     rc = RandomChoice()
-    printString = "Random Choices"
-    x2, y2 = runAll(um, rc, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), printString)
-    plt.plot(x2, y2)
+    modelString3 = "Random"
+    x3, y3 = runAll(um, rc, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString3)
+    plt.plot(x3, y3, label=modelString3)
+    plt.legend(loc = 'upper left')
+    plt.xlabel(xLabel)
+    plt.ylabel(yLabel)
+    plt.title(modelString3)
     plt.savefig("/home/soon/Desktop/randomChoices.png")
     plt.clf()
 
     #----------------------------------------
-    plt.plot(x1, y1, x2, y2)
-    plt.savefig("/home/soon/Desktop/bothInOne.png")
+    modelString = "All Models"
+    plt.plot(x1, y1, label=modelString1)
+    plt.plot(x2, y2, label=modelString2)
+    plt.plot(x3, y3, label=modelString3)
+    plt.legend(loc = 'upper left')
+    plt.xlabel(xLabel)
+    plt.ylabel(yLabel)
+    plt.title(modelString)
+    plt.savefig("/home/soon/Desktop/AllInOne.png")
     plt.clf()
     print("DONE SAVING FIG!")
 
