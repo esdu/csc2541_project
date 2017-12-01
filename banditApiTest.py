@@ -71,6 +71,7 @@ def pprint(obj):
     print(obj)
 
 def runAll(nnmf, ucb, ratingMatrix, trainMatrix, testMatrix, modelName):
+    backUpRatingMatrix = ratingMatrix.copy()
     positiveThreshold = 3.0 # Threshold to set prediction to positive labels
     labelTruth = PositiveNegativeMatrix(ratingMatrix, positiveThreshold)
 
@@ -136,13 +137,17 @@ def runAll(nnmf, ucb, ratingMatrix, trainMatrix, testMatrix, modelName):
     print("TEMP SHRINK TO tempMaxNumUser!")
     print(ratingMatrix.shape)
     ratingMatrix = ratingMatrix[:tempMaxNumUser]
-    ratingMatrix = ratingMatrix[:, tempMaxNumItem]
-    legalTestMask = legalTestMask[:tempMaxNumUser]
-    legalTestMask = legalTestMask[:, tempMaxNumItem]
-    rankingMatrix = rankingMatrix[:tempMaxNumUser]
-    rankingMatrix = rankingMatrix[:, tempMaxNumItem]
-    print("Ranking matrix for 10 users and 20 items")
+    ratingMatrix = ratingMatrix[:, :tempMaxNumItem] 
     print(ratingMatrix.shape)
+    print(legalTestMask.shape)
+    legalTestMask = legalTestMask[:tempMaxNumUser]
+    legalTestMask = legalTestMask[:, :tempMaxNumItem]
+    print(legalTestMask.shape)
+    print(rankingMatrix.shape)
+    rankingMatrix = rankingMatrix[:tempMaxNumUser]
+    rankingMatrix = rankingMatrix[:, :tempMaxNumItem]
+    print(rankingMatrix.shape)
+    print("Ranking matrix for 10 users and 20 items")
     print(rankingMatrix)
     #-------------------------------------------------------------------------------------------------------
     meanPrecisionAtK = PrecisionAtK(ratingMatrix, rankingMatrix, positiveThreshold, k).evaluate()
@@ -159,6 +164,8 @@ def runAll(nnmf, ucb, ratingMatrix, trainMatrix, testMatrix, modelName):
     # Option 6.2.2  Bandit evaluators 
     discountFactor = 0.99
     regretBasedOnOptimalRegret = RegretOptimalEvaluator(ratingMatrix, rankingMatrix, discountFactor).evaluate()
+    ratingMatrix = backUpRatingMatrix
+    ratingMatrix = ratingMatrix[:tempMaxNumUser]
     instantaneousRegret = RegretInstantaneousEvaluator(ratingMatrix, rankingMatrix, discountFactor, legalTestMask, orderChoices)
     regretBasedOnInstantaneousRegret = instantaneousRegret.evaluate()
     cumulativeInstantaneousRegret =  instantaneousRegret.getCumulativeInstantaneousRegret()
@@ -195,8 +202,8 @@ if __name__ == '__main__':
     # dataDirectory = "sclrecommender/data/movielens/ml-100k"
     dataDirectory ="ml-100k"
     mlp = MovieLensParser(dataDirectory)
-    numUser = 8
-    numItem = 8 
+    numUser = 10 
+    numItem = 10
     exParser = ExampleParser(dataDirectory)
     ratingMatrix = exParser.getRatingMatrix(numUser, numItem)
     ratingMatrix[0][0] = 1.0
