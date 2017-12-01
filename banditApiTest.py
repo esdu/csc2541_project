@@ -247,7 +247,7 @@ if __name__ == '__main__':
     modelString2 = "NNMF, Epsilon Greedy"
     x2, y2 = runAll(nnmf, egreedy, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString2)
 
-    plt.plot(x1, y1, label=modelString2)
+    plt.plot(x2, y2, label=modelString2)
     plt.legend(loc = 'upper left')
     plt.xlabel(xLabel)
     plt.ylabel(yLabel)
