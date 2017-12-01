@@ -148,8 +148,6 @@ def runAll(nnmf, ucb, ratingMatrix, trainMatrix, testMatrix, modelName):
     rankingMatrix = rankingMatrix[:tempMaxNumUser]
     # rankingMatrix = rankingMatrix[:, :tempMaxNumItem]
     print(rankingMatrix.shape)
-    print("Ranking matrix for 10 users and 20 items")
-    print(rankingMatrix)
     #-------------------------------------------------------------------------------------------------------
     meanPrecisionAtK = PrecisionAtK(ratingMatrix, rankingMatrix, positiveThreshold, k).evaluate()
     meanRecallAtK = RecallAtK(ratingMatrix, rankingMatrix, positiveThreshold, k).evaluate()
@@ -175,6 +173,9 @@ def runAll(nnmf, ucb, ratingMatrix, trainMatrix, testMatrix, modelName):
     pprint(regretBasedOnInstantaneousRegret)
     print("CumulativeInstantaneousRegret")
     pprint(cumulativeInstantaneousRegret)
+
+    print("Ranking matrix for 10 users and 20 items")
+    print(rankingMatrix[:, :tempMaxNumItem])
 
     #-----------------------------------------------------------------
     # TEMP FOR DEBUGGING
