@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 class BanditChoice2(object):
     def __init__(self):
@@ -13,8 +14,8 @@ class BanditChoice2(object):
         user_indices = user_indices[legalItemVector == 1]
         user_ratings = posteriorMatrix[:,user_indices]
         # itemIndex = self.get_ucb(user_ratings, user_indices)
-        itemIndex = self.get_egreedy(posteriorMatrix, legalItemVector)
-        # itemIndex = self.get_thompson_sample(posteriorMatrix, legalItemVector)
+        itemIndex = self.get_egreedy(user_ratings, user_indices)
+        # itemIndex = self.get_thompson_sample(user_ratings, user_indices)
         # itemIndex = self.get_ucb_empirical(user_ratings, user_indices)
 
         return itemIndex
