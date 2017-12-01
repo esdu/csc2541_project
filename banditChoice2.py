@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 class BanditChoice2(object):
     def __init__(self):

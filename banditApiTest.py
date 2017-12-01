@@ -241,6 +241,22 @@ if __name__ == '__main__':
     yLabel = 'Cumulative Instantaneous Regret'
     #----------------------------------------
     nnmf = NNMF(ratingMatrix.copy())
+    egreedy = BanditChoice2()
+    #nnmf = UncertaintyModel(ratingMatrix.copy())
+    #egreedy = RandomChoice()
+    modelString2 = "NNMF, Epsilon Greedy"
+    x2, y2 = runAll(nnmf, egreedy, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString2)
+
+    plt.plot(x1, y1, label=modelString2)
+    plt.legend(loc = 'upper left')
+    plt.xlabel(xLabel)
+    plt.ylabel(yLabel)
+    plt.title(modelString2)
+    plt.savefig("/home/soon/Desktop/epsilonGreedyChoices.png")
+    plt.clf()
+
+    #----------------------------------------
+    nnmf = NNMF(ratingMatrix.copy())
     ucb = BanditChoice()
     #nnmf = UncertaintyModel(ratingMatrix.copy())
     #ucb = RandomChoice()
@@ -255,23 +271,6 @@ if __name__ == '__main__':
     plt.title(modelString1)
     plt.savefig("/home/soon/Desktop/ucbChoices.png")
     plt.clf()
-    #----------------------------------------
-    nnmf = NNMF(ratingMatrix.copy())
-    egreedy = BanditChoice2()
-    #nnmf = UncertaintyModel(ratingMatrix.copy())
-    #egreedy = RandomChoice()
-    modelString2 = "NNMF, Epsilon Greedy"
-    x2, y2 = runAll(nnmf, ucb, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString2)
-
-    plt.plot(x1, y1, label=modelString2)
-    plt.legend(loc = 'upper left')
-    plt.xlabel(xLabel)
-    plt.ylabel(yLabel)
-    plt.title(modelString2)
-    plt.savefig("/home/soon/Desktop/epsilonGreedyChoices.png")
-    plt.clf()
-
-
     #----------------------------------------
     um = UncertaintyModel(ratingMatrix.copy())
     rc = RandomChoice()
