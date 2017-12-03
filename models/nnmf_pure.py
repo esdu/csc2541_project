@@ -281,14 +281,15 @@ class NNMF:
         
         tf.get_default_session().run(tf.global_variables_initializer())
 
-    def sample_user_ratings(self, user_index):
+    def sample_user_ratings(self, user_index, n_samples=100):
+        # third parameter not used
         idx_i = [user_index] * self.M
         idx_j = list(range(self.M))
         feed_dict = {
             self.idx_i: idx_i,
             self.idx_j: idx_j,
         }
-        return tf.get_default_session().run(self.predicted_R, feed_dict)
+        return np.expand_dims(tf.get_default_session().run(self.predicted_R, feed_dict), axis=0)
 
 
     def train(self, mask, n_iter=1000, verbose=False):

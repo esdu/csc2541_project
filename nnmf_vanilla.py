@@ -45,7 +45,8 @@ class NNMF(UncertaintyModel):
             losses = self.model.train(mask=legalTrainIndices, n_iter=n_iter)
         return losses
 
-    def sample_for_user(self, user_index):
+    def sample_for_user(self, user_index, num_samples=None):
         # return (k, m) matrix of k samples for user i
+        # note that num_samples is not used here
         with self.sess.as_default():
-            return self.model.sample_user_ratings(user_index)
+            return self.model.sample_user_ratings(user_index, num_samples)
