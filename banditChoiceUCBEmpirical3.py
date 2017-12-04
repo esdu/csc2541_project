@@ -1,7 +1,7 @@
 import numpy as np
 import random
 
-class BanditChoiceUCBEmpirical(object):
+class BanditChoiceUCBEmpirical1(object):
     def __init__(self):
         pass
 
@@ -17,7 +17,7 @@ class BanditChoiceUCBEmpirical(object):
 
     def get_ucb_empirical(self, user_ratings, user_indices):
         #select based on argmax(mean+std)
-        alpha = 1.0
+        alpha = 1.5
 
         mean_ratings = np.mean(user_ratings,axis=0)
         std_ratings = np.std(user_ratings,axis=0)
