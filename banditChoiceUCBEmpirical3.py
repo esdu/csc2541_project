@@ -1,7 +1,7 @@
 import numpy as np
 import random
 
-class BanditChoiceUCBEmpirical1(object):
+class BanditChoiceUCBEmpirical3(object):
     def __init__(self):
         pass
 
