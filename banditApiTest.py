@@ -270,17 +270,23 @@ if __name__ == '__main__':
     xLabel = 'Exploration Number'
     yLabel = 'Cumulative Instantaneous Regret'
     #----------------------------------------
-    '''
     nnmf_vanilla = NNMFVanilla(ratingMatrix.copy())
     ucb = BanditChoice()
-    modelString6 = "NNMF Vanilla, UCB"
-    x6, y6 = runAll(nnmf_vanilla, ucb, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString6)
-    plt.plot(x6, y6, label=modelString6)
+    #nnmf_vanilla = UncertaintyModel(ratingMatrix.copy())
+    #ucb = RandomChoice()
+    modelString6 = "NNMF Vanilla"
+    x6s, y6s = runAll(nnmf_vanilla, ucb, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString6)
+    currI = 0
+    for x6, y6 in zip(x6s, y6s):
+        plt.plot(x6, y6, label=modelString6 + str(currI))
+        currI += 1
+    x6 = x6s[0]
+    y6 = np.mean(y6s, axis = 0)
     plt.legend(loc = 'upper left')
     plt.xlabel(xLabel)
     plt.ylabel(yLabel)
     plt.title(modelString6)
-    plt.savefig("/home/soon/Desktop/optimalChoices.png")
+    plt.savefig("/home/soon/Desktop/nnmfVanilla.png")
     plt.clf()
     #----------------------------------------
     svi_nnmf = NNMF(ratingMatrix.copy())
@@ -288,15 +294,18 @@ if __name__ == '__main__':
     #svi_nnmf = UncertaintyModel(ratingMatrix.copy())
     #ucb = RandomChoice()
     modelString1 = "SVI_NNMF, UCB"
-    x1, y1 = runAll(svi_nnmf, ucb, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString1)
-
-    print("SAVING FIG!")
-    plt.plot(x1, y1, label=modelString1)
+    x1s, y1s = runAll(svi_nnmf, ucb, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString1)
+    currI = 0
+    for x1, y1 in zip(x1s, y1s):
+        plt.plot(x1, y1, label=modelString1 + str(currI))
+        currI += 1
+    x1 = x1s[0]
+    y1 = np.mean(y1s, axis = 0)
     plt.legend(loc = 'upper left')
     plt.xlabel(xLabel)
     plt.ylabel(yLabel)
     plt.title(modelString1)
-    plt.savefig("/home/soon/Desktop/ucbChoices.png")
+    plt.savefig("/home/soon/Desktop/SviNnmfUcbChoices.png")
     plt.clf()
     #----------------------------------------
     svi_nnmf = NNMF(ratingMatrix.copy())
@@ -304,16 +313,19 @@ if __name__ == '__main__':
     #svi_nnmf = UncertaintyModel(ratingMatrix.copy())
     #egreedy = RandomChoice()
     modelString2 = "SVI_NNMF, Epsilon Greedy"
-    x2, y2 = runAll(svi_nnmf, egreedy, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString2)
-
-    plt.plot(x2, y2, label=modelString2)
+    x2s, y2s = runAll(svi_nnmf, egreedy, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString2)
+    currI = 0
+    for x2, y2 in zip(x2s, y2s):
+        plt.plot(x2, y2, label=modelString2 + str(currI))
+        currI += 1
+    x2 = x2s[0]
+    y2 = np.mean(y2s, axis = 0)
     plt.legend(loc = 'upper left')
     plt.xlabel(xLabel)
     plt.ylabel(yLabel)
     plt.title(modelString2)
-    plt.savefig("/home/soon/Desktop/epsilonGreedyChoices.png")
+    plt.savefig("/home/soon/Desktop/SviNnmfEpsilonGreedyChoices.png")
     plt.clf()
-    '''
     #----------------------------------------
     um = UncertaintyModel(ratingMatrix.copy())
     rc = RandomChoice()
@@ -367,11 +379,9 @@ if __name__ == '__main__':
     plt.clf()
     #----------------------------------------
     modelString = "All Models"
-    '''
     plt.plot(x1, y1, label=modelString1)
     plt.plot(x2, y2, label=modelString2)
     plt.plot(x6, y6, label=modelString6)
-    '''
     plt.plot(x3, y3, label=modelString3)
     plt.plot(x4, y4, label=modelString4)
     plt.plot(x5, y5, label=modelString5)
