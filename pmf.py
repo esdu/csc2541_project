@@ -10,14 +10,15 @@ class PMF(UncertaintyModel):
     It also allows us to manage session/graph/hyperparams if we want.
     """
 
-    def __init__(self, ratingMatrix):
+    def __init__(self, ratingMatrix, seed=None):
         self.ratingMatrix = ratingMatrix
         self.sess = None
-        self.reset()
+        self.reset(seed=seed)
 
     def reset(self, seed=None):
         tf.reset_default_graph()
-        ed.set_seed(seed) # sets seed for both tf and numpy
+        if seed is not None:
+            ed.set_seed(seed) # sets seed for both tf and numpy
 
         if self.sess is not None:
             self.sess.close()
