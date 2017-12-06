@@ -4,7 +4,7 @@ import edward as ed
 
 class SimpleMatrixFactorization:
     def __init__(self, ratings_matrix, hidden_dim=30,
-                 batch_size=200, n_samples=1):
+                 batch_size=200, n_samples=1, pR_stddev=1.):
         """
         Computes R = UV' with SVI.
 
@@ -17,13 +17,14 @@ class SimpleMatrixFactorization:
         :param n_sample: For each iteration of SVI, how many latent samples to
             draw to estimate the gradient.
             Higher n_sample => more stable gradients.
+        :param pR_stddev: The model's stddev, ie. for p(r_{ij}|U,V).
         """
         # TODO: How to update this with more data? Right now it needs to retrain from beginning.
         #       Re-building a graph every time isn't ideal. We need to at least clean up the old graph.
         #       Workaround: user call tf.reset_default_graph before creating this.
 
         self.R_ = ratings_matrix
-        N, M = self.R_.shape
+        N, M = self.R_.shape; self.N = N; self.M = M
         D = hidden_dim
         self.BATCH = batch_size
 
@@ -40,7 +41,7 @@ class SimpleMatrixFactorization:
         U_selected = tf.gather(self.U, self.idx_i)
         V_selected = tf.gather(self.V, self.idx_j)
         self.R = ed.models.Normal(loc=tf.reduce_sum(tf.multiply(U_selected, V_selected), axis=1),
-                                  scale=tf.ones(self.BATCH))
+                                  scale=pR_stddev*tf.ones(self.BATCH))
 
         # VI
         self.qU = ed.models.Normal(loc=tf.Variable(tf.zeros([N, D])),
@@ -48,27 +49,31 @@ class SimpleMatrixFactorization:
         self.qV = ed.models.Normal(loc=tf.Variable(tf.zeros([M, D])),
                                    scale=tf.Variable(tf.ones([M, D])))
 
-        # Testing
-        # Note: It's interesting to look at just the U samples. Clustering that
-        # tells you how many "user preferences" are out there.
-        self.U_samples = self.qU.sample(100)
-        self.V_samples = self.qV.sample(100)
-
         # Inference
         self.inference = ed.KLqp({self.U: self.qU, self.V: self.qV}, data={self.R: self.r_ph})
         self.inference.initialize(scale={self.R: N*M/self.BATCH}, n_samples=n_samples)
         # Note: global_variables_initializer has to be run after creating inference.
         ed.get_session().run(tf.global_variables_initializer())
 
+        # Testing
+        self.test_idx_i = tf.placeholder(tf.int32, name="test_idx_i")
+        self.test_idx_j = tf.placeholder(tf.int32, name="test_idx_j")
+        self.n_test_samples = tf.placeholder(tf.int32, name="n_test_samples")
 
-    def sample_user_ratings(self, user_index):
-        # TODO optimize for each user at a time.
-        U_samples_, V_samples_ = ed.get_session().run([self.U_samples, self.V_samples])
-        R_samples_ = []
-        for i in range(U_samples_.shape[0]):
-            R_samples_.append(np.matmul(U_samples_[i], np.transpose(V_samples_[i])))
-        R_samples_ = np.array(R_samples_)
-        return np.squeeze(R_samples_[:, user_index, :])
+        self.qU_samples = tf.gather(self.qU.sample(self.n_test_samples), self.test_idx_i, axis=1)
+        self.qV_samples = tf.gather(self.qV.sample(self.n_test_samples), self.test_idx_j, axis=1)
+        self.sample_rhats = tf.reduce_sum(tf.multiply(self.qU_samples, self.qV_samples), axis=-1)
+
+
+    def sample_user_ratings(self, user_index, n_samples=100):
+        idx_i = [user_index] * self.M
+        idx_j = list(range(self.M))
+        feed_dict = {
+            self.test_idx_i: idx_i,
+            self.test_idx_j: idx_j,
+            self.n_test_samples: n_samples
+        }
+        return np.squeeze(ed.get_session().run(self.sample_rhats, feed_dict))
 
 
     #def mse(self):
