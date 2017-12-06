@@ -10,9 +10,9 @@ def save_graph_parameters(file):
     sess = ed.get_session()
     trained_vars = []
     for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES):
-        trained_vars.append(sess.run(var))    
+        trained_vars.append(sess.run(var))
     _pickle.dump(trained_vars, open(file, 'wb'))
-    return file 
+    return file
 
 def load_graph_parameters(file):
     sess = ed.get_session()
@@ -306,7 +306,7 @@ class NNMF:
         ###########
         self.test_idx_i = tf.placeholder(tf.int32, name="test_idx_i")
         self.test_idx_j = tf.placeholder(tf.int32, name="test_idx_j")
-        self.n_test_samples = tf.placeholder(tf.int32, name="test_idx_j")
+        self.n_test_samples = tf.placeholder(tf.int32, name="n_test_samples")
         N_LOOKUP = tf.size(self.test_idx_i)
         # TODO assert tf.size(self.test_idx_i) == tf.size(self.test_idx_j)
 
@@ -360,6 +360,7 @@ class NNMF:
 
             # TODO print out progress without using edward
             #if verbose: self.inference.print_progress(info_dict)
+            self.inference.print_progress(info_dict)
 
         losses = [x['loss'] for x in info_dicts]
         return losses
