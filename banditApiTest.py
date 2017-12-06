@@ -137,7 +137,7 @@ def runAll(nnmf, ucb, ratingMatrix, trainMatrix, testMatrix, modelName):
     k = 10 # number of items for each user is 20, so should be less than 20 so recall not guaranteed to be 1
 
     #-----------------------------------------------------------------------
-    tempMaxNumUser = 10 # TODO TEMPORARY, FOLLOWS NUMBER IN BANDIT RUNNER
+    tempMaxNumUser = 20 # TODO TEMPORARY, FOLLOWS NUMBER IN BANDIT RUNNER
     tempMaxNumItem = 20 # for printing ranking matrix
     print("TEMP SHRINK TO tempMaxNumUser!")
     print(ratingMatrix.shape)
@@ -198,7 +198,7 @@ def runAll(nnmf, ucb, ratingMatrix, trainMatrix, testMatrix, modelName):
     print(meanCumRegretUser.shape)
     print(meanCumRegretUser)
 
-    print("Ranking matrix for 10 users and 20 items")
+    print("Ranking matrix for 20 users and 20 items")
     print(rankingMatrix[:, :tempMaxNumItem])
 
     #-----------------------------------------------------------------
