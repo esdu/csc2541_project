@@ -2,6 +2,7 @@ from models.simple import SimpleMatrixFactorization as _PMF
 from models.nnmf_svi_eddie import save_graph_parameters, load_graph_parameters
 from uncertaintyModel import UncertaintyModel
 import tensorflow as tf
+import edward as ed
 
 class PMF(UncertaintyModel):
     """
@@ -15,8 +16,8 @@ class PMF(UncertaintyModel):
         self.reset()
 
     def reset(self, seed=None):
-        # TODO seed
         tf.reset_default_graph()
+        ed.set_seed(seed) # sets seed for both tf and numpy
 
         if self.sess is not None:
             self.sess.close()

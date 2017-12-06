@@ -2,6 +2,7 @@ from models.nnmf_pure import NNMF as _NNMF
 from models.nnmf_pure import save_graph_parameters, load_graph_parameters
 from uncertaintyModel import UncertaintyModel
 import tensorflow as tf
+import edward as ed
 
 class NNMFVanilla(UncertaintyModel):
     """
@@ -15,8 +16,8 @@ class NNMFVanilla(UncertaintyModel):
         self.reset()
 
     def reset(self, seed=None):
-        # TODO seed
         tf.reset_default_graph()
+        ed.set_seed(seed) # sets seed for both tf and numpy
 
         if self.sess is not None:
             self.sess.close()
