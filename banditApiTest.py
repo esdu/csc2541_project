@@ -12,8 +12,11 @@ from sclrecommender.mask import LegalMoveMaskGenerator
 
 from sclrecommender.matrix import RatingMatrix
 from sclrecommender.matrix import PositiveNegativeMatrix
+from sclrecommender.matrix import OneClassMatrix
 
 from sclrecommender.analyzer import MatrixAnalyzer
+
+from sclrecommender.transform import MatrixTransform
 
 from sclrecommender.parser import ExampleParser
 from sclrecommender.parser import MovieLensParser
@@ -22,7 +25,9 @@ from sclrecommender.bandit.runner import BanditRunner
 
 #from sclrecommender.bandit.model import UncertaintyModel
 from uncertaintyModel import UncertaintyModel
-from nnmf import NNMF
+from nnmf import NNMF # Distribution SVI NNMF
+from nnmf_vanilla import NNMFVanilla # NNMF vanilla with point estimates
+
 from banditChoice import BanditChoice # UCB
 from banditChoice2 import BanditChoice2 # Epsilon Greedy
 from sclrecommender.bandit.choice import RandomChoice # A random choice
@@ -166,7 +171,6 @@ def runAll(nnmf, ucb, ratingMatrix, trainMatrix, testMatrix, modelName):
     instantaneousRegret = RegretInstantaneousEvaluator(ratingMatrix, rankingMatrix, discountFactor, legalTestMask, orderChoices)
     regretBasedOnInstantaneousRegret = instantaneousRegret.evaluate()
     cumulativeInstantaneousRegret =  instantaneousRegret.getCumulativeInstantaneousRegret()
-
     print("RegretBasedOnOptimalRegret")
     pprint(regretBasedOnOptimalRegret)
     print("RegretBasedOnInstantaneousRegret")
@@ -174,18 +178,40 @@ def runAll(nnmf, ucb, ratingMatrix, trainMatrix, testMatrix, modelName):
     print("CumulativeInstantaneousRegret")
     pprint(cumulativeInstantaneousRegret)
 
+    instantRegretPerUser = []
+    cumulativeRegretPerUser = []
+    for userIndex in range(tempMaxNumUser):
+        regretBasedOnInstantaneousRegret = instantaneousRegret.evaluate(userIndex)
+        cumulativeInstantaneousRegret =  instantaneousRegret.getCumulativeInstantaneousRegret()
+
+        instantRegretPerUser.append(regretBasedOnInstantaneousRegret)
+        cumulativeRegretPerUser.append(cumulativeInstantaneousRegret)
+    meanInstantRegret = np.mean(np.array(instantRegretPerUser))
+    cumRegretUser = np.array(cumulativeRegretPerUser)
+    meanCumRegretUser = np.mean(cumRegretUser, axis = 0)
+    print("MeanInstantRegret")
+    print(meanInstantRegret)
+    print("CumulativeInstantRegretPerUser")
+    print(cumRegretUser.shape)
+    print(cumRegretUser)
+    print("MeanCumulativeInstantRegretPerUser")
+    print(meanCumRegretUser.shape)
+    print(meanCumRegretUser)
+
     print("Ranking matrix for 10 users and 20 items")
     print(rankingMatrix[:, :tempMaxNumItem])
 
     #-----------------------------------------------------------------
-    # TEMP FOR DEBUGGING
-    matrixAnalyzer.summarize() # TEMP FOR DEBUGGING
-    x = list(range(len(cumulativeInstantaneousRegret)))
-    y = cumulativeInstantaneousRegret.copy()
+    matrixAnalyzer.summarize() 
+    xs = []
+    ys = []
+    for i in range(cumRegretUser.shape[0]):
+        x = list(range(len(cumRegretUser[i])))
+        y = cumRegretUser[i].copy()
+        xs.append(x)
+        ys.append(y)
     #-----------------------------------------------------------------
-    return x, y
-
-        
+    return xs, ys
 
     #-------------------------------------------------------------------------------------------------------
 
@@ -208,6 +234,11 @@ if __name__ == '__main__':
     ratingMatrix = exParser.getRatingMatrix(numUser, numItem)
     ratingMatrix[0][0] = 1.0
     ratingMatrix = mlp.getRatingMatrixCopy()
+
+    # Remove the users that are too hot
+    ratingMatrix = MatrixTransform(ratingMatrix).coldUsers(800)
+    # Sort by users that are hot
+    ratingMatrix = MatrixTransform(ratingMatrix).hotUsers()
 
     # Step 2: Generate both Rating Matrix and Label Matrix for evaluation
     rmTruth = RatingMatrix(ratingMatrix)
@@ -239,12 +270,25 @@ if __name__ == '__main__':
     xLabel = 'Exploration Number'
     yLabel = 'Cumulative Instantaneous Regret'
     #----------------------------------------
-    nnmf = NNMF(ratingMatrix.copy())
+    '''
+    nnmf_vanilla = NNMFVanilla(ratingMatrix.copy())
     ucb = BanditChoice()
-    #nnmf = UncertaintyModel(ratingMatrix.copy())
+    modelString6 = "NNMF Vanilla, UCB"
+    x6, y6 = runAll(nnmf_vanilla, ucb, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString6)
+    plt.plot(x6, y6, label=modelString6)
+    plt.legend(loc = 'upper left')
+    plt.xlabel(xLabel)
+    plt.ylabel(yLabel)
+    plt.title(modelString6)
+    plt.savefig("/home/soon/Desktop/optimalChoices.png")
+    plt.clf()
+    #----------------------------------------
+    svi_nnmf = NNMF(ratingMatrix.copy())
+    ucb = BanditChoice()
+    #svi_nnmf = UncertaintyModel(ratingMatrix.copy())
     #ucb = RandomChoice()
-    modelString1 = "NNMF, UCB"
-    x1, y1 = runAll(nnmf, ucb, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString1)
+    modelString1 = "SVI_NNMF, UCB"
+    x1, y1 = runAll(svi_nnmf, ucb, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString1)
 
     print("SAVING FIG!")
     plt.plot(x1, y1, label=modelString1)
@@ -255,12 +299,12 @@ if __name__ == '__main__':
     plt.savefig("/home/soon/Desktop/ucbChoices.png")
     plt.clf()
     #----------------------------------------
-    nnmf = NNMF(ratingMatrix.copy())
+    svi_nnmf = NNMF(ratingMatrix.copy())
     egreedy = BanditChoice2()
-    #nnmf = UncertaintyModel(ratingMatrix.copy())
+    #svi_nnmf = UncertaintyModel(ratingMatrix.copy())
     #egreedy = RandomChoice()
-    modelString2 = "NNMF, Epsilon Greedy"
-    x2, y2 = runAll(nnmf, egreedy, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString2)
+    modelString2 = "SVI_NNMF, Epsilon Greedy"
+    x2, y2 = runAll(svi_nnmf, egreedy, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString2)
 
     plt.plot(x2, y2, label=modelString2)
     plt.legend(loc = 'upper left')
@@ -269,13 +313,18 @@ if __name__ == '__main__':
     plt.title(modelString2)
     plt.savefig("/home/soon/Desktop/epsilonGreedyChoices.png")
     plt.clf()
-
+    '''
     #----------------------------------------
     um = UncertaintyModel(ratingMatrix.copy())
     rc = RandomChoice()
     modelString3 = "Random"
-    x3, y3 = runAll(um, rc, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString3)
-    plt.plot(x3, y3, label=modelString3)
+    x3s, y3s = runAll(um, rc, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString3)
+    currI = 0
+    for x3, y3 in zip(x3s, y3s):
+        plt.plot(x3, y3, label=modelString3 + str(currI))
+        currI += 1
+    x3 = x3s[0]
+    y3 = np.mean(y3s, axis = 0)
     plt.legend(loc = 'upper left')
     plt.xlabel(xLabel)
     plt.ylabel(yLabel)
@@ -286,9 +335,13 @@ if __name__ == '__main__':
     um = UncertaintyModel(ratingMatrix.copy())
     worstChoice = WorstChoice()
     modelString4 = "Worst"
-    x4, y4 = runAll(um, worstChoice, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString4)
-
-    plt.plot(x4, y4, label=modelString4)
+    x4s, y4s = runAll(um, worstChoice, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString4)
+    currI = 0
+    for x4, y4 in zip(x4s, y4s):
+        plt.plot(x4, y4, label=modelString4 + str(currI))
+        currI += 1
+    x4 = x4s[0]
+    y4 = np.mean(y4s, axis = 0)
     plt.legend(loc = 'upper left')
     plt.xlabel(xLabel)
     plt.ylabel(yLabel)
@@ -299,9 +352,13 @@ if __name__ == '__main__':
     um = UncertaintyModel(ratingMatrix.copy())
     optimalChoice = OptimalChoice()
     modelString5 = "Optimal"
-    x5, y5 = runAll(um, optimalChoice, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString5)
-
-    plt.plot(x5, y5, label=modelString5)
+    x5s, y5s = runAll(um, optimalChoice, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString5)
+    currI = 0
+    for x5, y5 in zip(x5s, y5s):
+        plt.plot(x5, y5, label=modelString5 + str(currI))
+        currI += 1
+    x5 = x5s[0]
+    y5 = np.mean(y5s, axis = 0)
     plt.legend(loc = 'upper left')
     plt.xlabel(xLabel)
     plt.ylabel(yLabel)
@@ -310,8 +367,11 @@ if __name__ == '__main__':
     plt.clf()
     #----------------------------------------
     modelString = "All Models"
+    '''
     plt.plot(x1, y1, label=modelString1)
     plt.plot(x2, y2, label=modelString2)
+    plt.plot(x6, y6, label=modelString6)
+    '''
     plt.plot(x3, y3, label=modelString3)
     plt.plot(x4, y4, label=modelString4)
     plt.plot(x5, y5, label=modelString5)
@@ -322,5 +382,4 @@ if __name__ == '__main__':
     plt.savefig("/home/soon/Desktop/AllInOne.png")
     plt.clf()
     print("DONE SAVING FIG!")
-
     print("DONE TESTING")

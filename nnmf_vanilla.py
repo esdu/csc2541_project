@@ -3,7 +3,7 @@ from models.nnmf_pure import save_graph_parameters, load_graph_parameters
 from uncertaintyModel import UncertaintyModel
 import tensorflow as tf
 
-class NNMF(UncertaintyModel):
+class NNMFVanilla(UncertaintyModel):
     """
     Thin wrapper around our model to conform to Soon's API.
     It also allows us to manage session/graph/hyperparams if we want.
