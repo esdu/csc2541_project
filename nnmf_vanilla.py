@@ -25,12 +25,19 @@ class NNMFVanilla(UncertaintyModel):
         self.sess = tf.Session()
 
         with self.sess.as_default():
+            #self.model = _NNMF(
+            #    self.ratingMatrix,
+            #    D=10, Dp=60, var_ratio=1.,
+            #    nn_hidden_layer_dims=[50,50,50], nn_W_init_mean=0., nn_W_init_stddev=1., nn_b_init_mean=0., nn_b_init_stddev=1.,
+            #    batch_size=200,
+            #    optimizer='adam', lr_init=0.1, lr_decay_steps=100, lr_decay_rate=0.9
+            #)
             self.model = _NNMF(
                 self.ratingMatrix,
-                D=10, Dp=60, var_ratio=1.,
-                nn_hidden_layer_dims=[50,50,50], nn_W_init_mean=0., nn_W_init_stddev=1., nn_b_init_mean=0., nn_b_init_stddev=1.,
+                D=60, Dp=35, var_ratio=1.,
+                nn_hidden_layer_dims=[50,50,50], nn_W_init_mean=0., nn_W_init_stddev=.51, nn_b_init_mean=0., nn_b_init_stddev=1.18,
                 batch_size=200,
-                optimizer='adam', lr_init=0.1, lr_decay_steps=100, lr_decay_rate=0.9
+                optimizer='adam', lr_init=0.01, lr_decay_steps=100, lr_decay_rate=0.9
             )
 
     def save(self, fname):
@@ -42,7 +49,7 @@ class NNMFVanilla(UncertaintyModel):
         with self.sess.as_default():
             load_graph_parameters(fname)
 
-    def train(self, legalTrainIndices, n_iter=1000):
+    def train(self, legalTrainIndices, n_iter=6000):
         with self.sess.as_default():
             losses = self.model.train(mask=legalTrainIndices, n_iter=n_iter)
         return losses
