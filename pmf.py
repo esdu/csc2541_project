@@ -36,8 +36,7 @@ class PMF(UncertaintyModel):
 
     def save(self, fname):
         with self.sess.as_default():
-            self.model.saver.save(self.sess, fname)
-        return fname
+            return self.model.saver.save(self.sess, fname)
 
     def load(self, fname):
         with self.sess.as_default():

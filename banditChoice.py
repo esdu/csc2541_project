@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 class BanditChoice(object):
     def __init__(self):
@@ -8,7 +9,7 @@ class BanditChoice(object):
         # posteriorMatrix = (numSamples, numItems)
         # legalItemVector = (numItems)
         # itemIndex an integer within [0, numItems - 1]
-        # user_ratings = posteriorMatrix[:,legalItemVector] 
+        # user_ratings = posteriorMatrix[:,legalItemVector]
         user_indices = np.array(range(len(legalItemVector)))
         user_indices = user_indices[legalItemVector == 1]
         user_ratings = posteriorMatrix[:,user_indices]
@@ -18,7 +19,7 @@ class BanditChoice(object):
 
 
         return itemIndex
-    
+
     def get_ucb(self, user_ratings, user_indices):
         #get upper quantile of ratings
         sorted_ratings = np.sort(user_ratings,axis=0)
@@ -39,9 +40,9 @@ class BanditChoice(object):
             idx = np.argmax(mean_ratings)
         else:
             idx = random.randint(0, len(mean_ratings)-1)
-        
+
         return user_indices[idx]
-        
+
 
     def get_thompson_sample(self, user_ratings, user_indices):
         random_sample = random.randint(0,len(user_ratings)-1)
@@ -65,4 +66,4 @@ class BanditChoice(object):
         idx = random.randint(0, len(user_ratings[0])-1)
         return user_indices[idx]
 
-        
+
