@@ -2,7 +2,7 @@ import numpy as np
 
 def empirical_entropy(samples, num_bins=12):
     # histogram method
-    # put variables into 6/(num_bins)-width bins from 0 to 5
+    # put variables into 6/(num_bins)-width bins from 0 to 6
     bounds = np.linspace(0,6,num_bins+1)
     frequencies = np.zeros((num_bins, samples.shape[1]))
     num_samples = samples.shape[0]
