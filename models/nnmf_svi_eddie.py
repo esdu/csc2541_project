@@ -293,10 +293,10 @@ class NNMF:
         self.inference = ed.KLqp({self.U: self.qU, self.V: self.qV,
                                   self.Up: self.qUp, self.Vp: self.qVp}, data={self.R: self.r_ph})
 
-        optimizer, global_step = create_optimizer(optimizer, lr_init, lr_decay_steps, lr_decay_rate)
+        _optimizer, global_step = create_optimizer(optimizer, lr_init, lr_decay_steps, lr_decay_rate)
 
         self.inference.initialize(scale={self.R: N*M/self.batch_size}, n_samples=n_samples,
-                                  optimizer=optimizer, global_step=global_step)
+                                  optimizer=_optimizer, global_step=global_step)
 
         # Note: global_variables_initializer has to be run after creating inference.
         ed.get_session().run(tf.global_variables_initializer())
@@ -323,6 +323,19 @@ class NNMF:
             self.sample_rhats = neural_net_tensor(test_nn_input, N_LOOKUP,
                                                   nn_layer_dims, nn_W_init_mean, nn_W_init_stddev, nn_b_init_mean, nn_b_init_stddev)
 
+        ##############
+        # Validation #
+        ##############
+        self.r_map_estimates = tf.reduce_mean(tf.squeeze(self.sample_rhats), axis=0)
+        self.mse = tf.reduce_mean(tf.square(self.r_map_estimates - self.r_ph))
+        self.loss = self.inference.loss
+
+        ########
+        # Misc #
+        ########
+
+        self.saver = tf.train.Saver()
+
 
     def sample_user_ratings(self, user_index, n_samples=100):
         idx_i = [user_index] * self.M
@@ -335,16 +348,33 @@ class NNMF:
         return np.squeeze(ed.get_session().run(self.sample_rhats, feed_dict))
 
 
-    def train(self, mask, n_iter=1000, verbose=False):
+    def train(self, mask, valid_mask=None, n_iter=1000, verbose=False):
         """
         :param mask: Same size as ratings_matrix.
             A 0 indicates to not use this rating, else use this rating.
             If None given, ratings_matrix will be used as the mask.
+        :param valid_mask: Same size as ratings_matrix.
+            Used to access when the model has trained to convergence.
         :param n_iter: How many iterations of SVI to run.
         """
-        seen_indices = np.array(np.where(mask))
         info_dicts = []
-        for _ in range(n_iter):
+        seen_indices = np.array(np.where(mask))
+
+        if valid_mask is not None:
+            valid_losses = []
+            valid_indices = np.array(np.where(valid_mask))
+
+            valid_mses = []
+            valid_mse_idx_i = valid_indices[0, :]
+            valid_mse_idx_j = valid_indices[1, :]
+            valid_mse_feed_dict = {
+                self.test_idx_i: valid_mse_idx_i,
+                self.test_idx_j: valid_mse_idx_j,
+                self.n_test_samples: 20,
+                self.r_ph: self.R_[valid_mse_idx_i, valid_mse_idx_j]
+            }
+
+        for ii in range(n_iter):
             # TODO is there a problem training with random batches? Look into lit more.
             # Train on a batch of self.batch_size random elements each iteration.
             rand_idx = np.random.choice(seen_indices.shape[1], self.batch_size, replace=False)
@@ -359,9 +389,35 @@ class NNMF:
             info_dicts.append(info_dict)
 
             # TODO print out progress without using edward
-            #if verbose: self.inference.print_progress(info_dict)
             if verbose:
                 self.inference.print_progress(info_dict)
+                #if ii % 100 == 0:
+                #    print(ii, info_dict['loss'])
+
+            if valid_mask is not None:
+                # Validation
+                # TODO either we use self.mse
+                # Or we need to make the batch size bigger
+                # Or we need to make the run this multiple times
+                valid_idx = np.random.choice(valid_indices.shape[1], self.batch_size, replace=False)
+
+                valid_idx_i = valid_indices[0, valid_idx]
+                valid_idx_j = valid_indices[1, valid_idx]
+                valid_feed_dict = {
+                    self.idx_i: valid_idx_i,
+                    self.idx_j: valid_idx_j,
+                    self.r_ph: self.R_[valid_idx_i, valid_idx_j]
+                }
+
+                valid_loss = ed.get_session().run(self.loss, valid_feed_dict)
+                valid_losses.append(valid_loss)
+
+                valid_mse = ed.get_session().run(self.mse, valid_mse_feed_dict)
+                valid_mses.append(valid_mse)
 
         losses = [x['loss'] for x in info_dicts]
-        return losses
+
+        if valid_mask is not None:
+            return losses, valid_losses, valid_mses
+        else:
+            return losses

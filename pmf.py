@@ -25,17 +25,30 @@ class PMF(UncertaintyModel):
         self.sess = tf.Session()
 
         with self.sess.as_default():
+            #self.model = _PMF(
+            #    self.ratingMatrix,
+            #    hidden_dim=70, # To match NNMF 60 + 10 hidden dims.
+            #    batch_size=200, n_samples=10, pR_stddev=1.)
             self.model = _PMF(
                 self.ratingMatrix,
-                hidden_dim=70, # To match NNMF 60 + 10 hidden dims.
-                batch_size=200, n_samples=10, pR_stddev=1.)
+                hidden_dim=20, # To match NNMF 60 + 10 hidden dims.
+                batch_size=1000, n_samples=10, pR_stddev=1.)
 
     def save(self, fname):
+        with self.sess.as_default():
+            self.model.saver.save(self.sess, fname)
+        return fname
+
+    def load(self, fname):
+        with self.sess.as_default():
+            self.model.saver.restore(self.sess, fname)
+
+    def save_pkl(self, fname):
         with self.sess.as_default():
             save_graph_parameters(fname)
         return fname
 
-    def load(self, fname):
+    def load_pkl(self, fname):
         with self.sess.as_default():
             load_graph_parameters(fname)
 

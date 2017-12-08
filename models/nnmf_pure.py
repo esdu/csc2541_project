@@ -9,9 +9,9 @@ def save_graph_parameters(file):
     sess = tf.get_default_session()
     trained_vars = []
     for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES):
-        trained_vars.append(sess.run(var))    
+        trained_vars.append(sess.run(var))
     _pickle.dump(trained_vars, open(file, 'wb'))
-    return file 
+    return file
 
 def load_graph_parameters(file):
     sess = tf.get_default_session()
@@ -269,17 +269,21 @@ class NNMF:
             self.means = neural_net(nn_input, nn_layer_dims, nn_W_init_mean, nn_W_init_stddev, nn_b_init_mean, nn_b_init_stddev)
 
         self.predicted_R = tf.squeeze(self.means)
-        
+
         # Cost Function
         self.regularizer = var_ratio*(tf.reduce_sum(tf.square(self.U))+tf.reduce_sum(tf.square(self.V))+tf.reduce_sum(tf.square(self.Up))+tf.reduce_sum(tf.square(self.Vp)))
         self.cost = tf.reduce_sum(tf.square(self.r_ph-self.predicted_R)) + self.regularizer
-        
-          
+
+
         # Parameter Updates
         optimizer, global_step = create_optimizer(optimizer, lr_init, lr_decay_steps, lr_decay_rate)
         self.train_step = optimizer.minimize(self.cost, global_step=global_step)
-        
+
         tf.get_default_session().run(tf.global_variables_initializer())
+
+        # for Validation
+        self.mse = tf.reduce_mean(tf.square(self.predicted_R - self.r_ph))
+
 
     def sample_user_ratings(self, user_index, n_samples=100):
         # third parameter not used
@@ -292,7 +296,7 @@ class NNMF:
         return np.expand_dims(tf.get_default_session().run(self.predicted_R, feed_dict), axis=0)
 
 
-    def train(self, mask, n_iter=1000, verbose=False):
+    def train(self, mask, valid_mask=None, n_iter=1000, verbose=False):
         """
         :param mask: Same size as ratings_matrix.
             A 0 indicates to not use this rating, else use this rating.
@@ -302,6 +306,18 @@ class NNMF:
         sess = tf.get_default_session()
         losses = []
         seen_indices = np.array(np.where(mask))
+
+        valid_mses = []
+        if valid_mask is not None:
+            valid_indices = np.array(np.where(valid_mask))
+            valid_mse_idx_i = valid_indices[0, :]
+            valid_mse_idx_j = valid_indices[1, :]
+            valid_mse_feed_dict = {
+                self.idx_i: valid_mse_idx_i,
+                self.idx_j: valid_mse_idx_j,
+                self.r_ph: self.R_[valid_mse_idx_i, valid_mse_idx_j]
+            }
+
         for _ in range(n_iter):
             # TODO is there a problem training with random batches? Look into lit more.
             # Train on a batch of self.batch_size random elements each iteration.
@@ -313,9 +329,16 @@ class NNMF:
                 self.idx_j: idx_j,
                 self.r_ph: self.R_[idx_i, idx_j]
             }
-            
+
             sess.run(self.train_step, feed_dict=feed_dict)
             loss = sess.run(self.cost, feed_dict=feed_dict)
             losses.append(loss)
 
-        return losses
+            if valid_mask is not None:
+                valid_mse = sess.run(self.mse, valid_mse_feed_dict)
+                valid_mses.append(valid_mse)
+
+        if valid_mask is not None:
+            return losses, valid_mses
+        else:
+            return losses
