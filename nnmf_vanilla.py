@@ -32,10 +32,19 @@ class NNMFVanilla(UncertaintyModel):
             #    batch_size=200,
             #    optimizer='adam', lr_init=0.1, lr_decay_steps=100, lr_decay_rate=0.9
             #)
+            #self.model = _NNMF(
+            #    self.ratingMatrix,
+            #    D=60, Dp=35, var_ratio=1.,
+            #    nn_hidden_layer_dims=[50,50,50], nn_W_init_mean=0., nn_W_init_stddev=.51, nn_b_init_mean=0., nn_b_init_stddev=1.18,
+            #    batch_size=200,
+            #    optimizer='adam', lr_init=0.01, lr_decay_steps=100, lr_decay_rate=0.9
+            #)
+
+            # simple architecture
             self.model = _NNMF(
                 self.ratingMatrix,
-                D=60, Dp=35, var_ratio=1.,
-                nn_hidden_layer_dims=[50,50,50], nn_W_init_mean=0., nn_W_init_stddev=.51, nn_b_init_mean=0., nn_b_init_stddev=1.18,
+                D=10, Dp=10, var_ratio=1.,
+                nn_hidden_layer_dims=[20], nn_W_init_mean=0., nn_W_init_stddev=.51, nn_b_init_mean=0., nn_b_init_stddev=1.18,
                 batch_size=200,
                 optimizer='adam', lr_init=0.01, lr_decay_steps=100, lr_decay_rate=0.9
             )

@@ -35,14 +35,17 @@ def get_nn_weights(nn_layer_dims, mean_W, stddev_W, mean_b, stddev_b):
     """
     params = []
 
+    # TODO debuggin!
+    TRAINABLE = False
+
     prv_dim = nn_layer_dims[0]
     for layer in range(1, len(nn_layer_dims)):
         cur_dim = nn_layer_dims[layer]
 
         W = tf.get_variable(initializer=tf.random_normal([prv_dim, cur_dim], mean=mean_W, stddev=stddev_W),
-                            name="W{}".format(layer))
+                            name="W{}".format(layer), trainable=TRAINABLE)
         b = tf.get_variable(initializer=tf.random_normal([1      , cur_dim], mean=mean_b, stddev=stddev_b),
-                            name="b{}".format(layer))
+                            name="b{}".format(layer), trainable=TRAINABLE)
         params.append(W)
         params.append(b)
 
