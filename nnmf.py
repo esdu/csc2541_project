@@ -39,6 +39,8 @@ class NNMF(UncertaintyModel):
             #    batch_size=200, n_samples=50,
             #    optimizer='adam', lr_init=0.001, lr_decay_steps=100, lr_decay_rate=0.9
             #)
+
+            # simple architecture
             self.model = _NNMF(
                 self.ratingMatrix,
                 D=10, Dp=10, pZ_prior_stddev=10, pR_stddev=.5,
