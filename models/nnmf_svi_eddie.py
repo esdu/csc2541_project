@@ -360,7 +360,8 @@ class NNMF:
 
             # TODO print out progress without using edward
             #if verbose: self.inference.print_progress(info_dict)
-            self.inference.print_progress(info_dict)
+            if verbose:
+                self.inference.print_progress(info_dict)
 
         losses = [x['loss'] for x in info_dicts]
         return losses
