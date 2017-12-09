@@ -57,6 +57,30 @@ def desparsify_2(R):
     return _desparsify(R, MIN_PERC_FILLED_ITEMS=0.1, MIN_PERC_FILLED_USERS=0.2)
 
 
+def make_binary(R, include_three_as_negative=False, verbose=False):
+    '''Output is 0: no rating, 1: dislike, 2: like.
+       Note that unless indicated, we throw out the "3" rating
+       because we assume it's not informative of polarity.
+    '''
+    if verbose:
+        print("before")
+        print(np.sum(R == 1) / np.sum(R > 0))
+        print(np.sum(R == 2) / np.sum(R > 0))
+        print(np.sum(R == 3) / np.sum(R > 0))
+        print(np.sum(R == 4) / np.sum(R > 0))
+        print(np.sum(R == 5) / np.sum(R > 0))
+    Rb = np.zeros(R.shape)
+    Rb[(R == 1) | (R == 2)] = 1
+    Rb[(R == 4) | (R == 5)] = 2
+    if include_three_as_negative:
+        Rb[(R == 3)] = 1
+    if verbose:
+        print("after")
+        print(np.sum(Rb == 1) / np.sum(Rb > 0))
+        print(np.sum(Rb == 2) / np.sum(Rb > 0))
+    return Rb
+
+
 def prepare_test_users(R, NUM_USERS_DENSE = 20, NUM_USERS_SPARS = 20, PERC_DROP = 0.3):
     rating_density_per_user = list(zip(np.sum(R>0, axis=1), range(R.shape[0])))
     dense_users = sorted(rating_density_per_user, key=lambda x: -x[0])[:NUM_USERS_DENSE]
