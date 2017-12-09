@@ -8,7 +8,7 @@ except Exception:
 
 class SimpleMatrixFactorization:
     def __init__(self, ratings_matrix, hidden_dim=30,
-                 batch_size=200, n_samples=1, pR_stddev=1.,
+                 batch_size=200, n_samples=1, pR_stddev=1.0,
                  lr_init=0.1, lr_decay_steps=200, lr_decay_rate=0.99):
         """
         Computes R = UV' with SVI.
@@ -49,10 +49,10 @@ class SimpleMatrixFactorization:
         self.R = ed.models.Normal(loc=means, scale=pR_stddev*tf.ones(self.batch_size))
 
         # VI
-        self.qU = ed.models.Normal(loc=tf.Variable(tf.zeros([N, D])),
-                                   scale=tf.Variable(tf.ones([N, D])))
-        self.qV = ed.models.Normal(loc=tf.Variable(tf.zeros([M, D])),
-                                   scale=tf.Variable(tf.ones([M, D])))
+        self.qU = ed.models.Normal(loc=tf.Variable(tf.zeros([N, D]), name="qU_mean"),
+                                   scale=tf.Variable(tf.ones([N, D]), name="qU_var"))
+        self.qV = ed.models.Normal(loc=tf.Variable(tf.zeros([M, D]), name="qV_mean"),
+                                   scale=tf.Variable(tf.ones([M, D]), name="qV_var"))
 
         # Inference
         self.inference = ed.KLqp({self.U: self.qU, self.V: self.qV}, data={self.R: self.r_ph})

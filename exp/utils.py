@@ -79,3 +79,35 @@ def prepare_test_users(R, NUM_USERS_DENSE = 20, NUM_USERS_SPARS = 20, PERC_DROP 
         test_masks[idx] = test_mask
 
     return dense_users, spars_users, train_mask, test_masks
+
+def prepare_test_users_sampled(R, NUM_USERS_DENSE = 5, NUM_USERS_SPARS = 5, PERC_DROP = 0.3, sample_range = 50):
+    np.random.seed(1337)
+    
+    rating_density_per_user = list(zip(np.sum(R>0, axis=1), range(R.shape[0])))
+    
+    assert NUM_USERS_DENSE <= sample_range
+    dense_users = sorted(rating_density_per_user, key=lambda x: -x[0])[:sample_range]
+    idx = np.random.choice(len(dense_users), NUM_USERS_DENSE, replace=False)
+    dense_users = [tuple(x) for x in np.array(dense_users)[idx]]
+    
+    assert NUM_USERS_SPARS <= sample_range
+    spars_users = sorted(rating_density_per_user, key=lambda x:  x[0])[:sample_range]
+    idx = np.random.choice(len(spars_users), NUM_USERS_SPARS, replace=False)
+    spars_users = [tuple(x) for x in np.array(spars_users)[idx]]
+
+    train_mask = R > 0
+
+    # The test masks we'll use later.
+    test_masks = {}
+
+    # We artifically dropout some elements from the users we're interested in. Assume the rest of the matrix is filled.
+    for _, idx in (dense_users + spars_users):
+        before = np.copy(train_mask[idx, :])
+
+        dropout = 1-np.random.binomial(1, PERC_DROP, size=R.shape[1])
+        train_mask[idx, :] = dropout * train_mask[idx, :]
+
+        test_mask = np.bitwise_xor(before, train_mask[idx, :])
+        test_masks[idx] = test_mask
+
+    return dense_users, spars_users, train_mask, test_masks
