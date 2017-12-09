@@ -57,6 +57,27 @@ def desparsify_2(R):
     return _desparsify(R, MIN_PERC_FILLED_ITEMS=0.1, MIN_PERC_FILLED_USERS=0.2)
 
 
+def remove_polarized_ratings(R):
+    POLARITY_THRESHOLD = 0.8 # remove all movies where at least this many people liked or disliked the movie.
+
+    keep_js = []
+    for j in range(R.shape[1]):
+        negatives = np.sum((R[:,j] == 1) | (R[:,j] == 2))
+        undecided = np.sum(R[:,j] == 3)
+        positives = np.sum((R[:,j] == 4) | (R[:,j] == 5))
+
+        if positives+negatives > 0 and \
+           (negatives/(positives+negatives) > POLARITY_THRESHOLD or
+            positives/(positives+negatives) > POLARITY_THRESHOLD):
+                continue
+
+        keep_js.append(j)
+
+    R_ = np.copy(R)
+    R_ = R_[:, keep_js]
+    return R_
+
+
 def make_binary(R, include_three_as_negative=False, verbose=False):
     '''Output is 0: no rating, 1: dislike, 2: like.
        Note that unless indicated, we throw out the "3" rating
@@ -64,11 +85,7 @@ def make_binary(R, include_three_as_negative=False, verbose=False):
     '''
     if verbose:
         print("before")
-        print(np.sum(R == 1) / np.sum(R > 0))
-        print(np.sum(R == 2) / np.sum(R > 0))
-        print(np.sum(R == 3) / np.sum(R > 0))
-        print(np.sum(R == 4) / np.sum(R > 0))
-        print(np.sum(R == 5) / np.sum(R > 0))
+        print_R_stats(R)
     Rb = np.zeros(R.shape)
     Rb[(R == 1) | (R == 2)] = 1
     Rb[(R == 4) | (R == 5)] = 2
@@ -103,3 +120,11 @@ def prepare_test_users(R, NUM_USERS_DENSE = 20, NUM_USERS_SPARS = 20, PERC_DROP 
         test_masks[idx] = test_mask
 
     return dense_users, spars_users, train_mask, test_masks
+
+
+def print_R_stats(R):
+    print("% 1's", np.sum(R == 1) / np.sum(R > 0))
+    print("% 2's", np.sum(R == 2) / np.sum(R > 0))
+    print("% 3's", np.sum(R == 3) / np.sum(R > 0))
+    print("% 4's", np.sum(R == 4) / np.sum(R > 0))
+    print("% 5's", np.sum(R == 5) / np.sum(R > 0))
