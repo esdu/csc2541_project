@@ -105,7 +105,7 @@ def runAll(nnmf, ucb, ratingMatrix, trainMatrix, testMatrix, modelName):
     pprint(legalTrainMask)
     pprint(legalTestMask)
 
-    banditRunner = BanditRunner(ratingMatrix.copy(), legalTrainMask.copy(), legalTestMask.copy())
+    banditRunner = BanditRunner(ratingMatrix.copy(), legalTrainMask.copy(), legalTestMask.copy(), modelName)
     banditRunner.setUncertaintyModel(nnmf)
     banditRunner.setBanditChoice(ucb)
     
