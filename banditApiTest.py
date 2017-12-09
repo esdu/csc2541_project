@@ -269,6 +269,8 @@ if __name__ == '__main__':
 
     xLabel = 'Exploration Number'
     yLabel = 'Cumulative Instantaneous Regret'
+
+    fileLocation = "/home/soon/Desktop/"
     #----------------------------------------
     um = UncertaintyModel(ratingMatrix.copy())
     optimalChoice = OptimalChoice()
@@ -284,15 +286,23 @@ if __name__ == '__main__':
     plt.xlabel(xLabel)
     plt.ylabel(yLabel)
     plt.title(modelString5)
-    plt.savefig("/home/soon/Desktop/optimalChoices.png")
+    plt.savefig(fileLocation + "optimalChoices.png")
     plt.clf()
     plt.plot(x5, y5, label=modelString5 + str(currI))
     plt.legend(loc = 'upper left')
     plt.xlabel(xLabel)
     plt.ylabel(yLabel)
     plt.title(modelString5)
-    plt.savefig("/home/soon/Desktop/optimalChoicesMean.png")
+    plt.savefig(fileLocation + "optimalChoicesMean.png")
+    np.save(fileLocation + "x5.npy", x5)
+    np.save(fileLocation + "y5s.npy", y5s)
     plt.clf()
+    '''
+    kaka = np.load(fileLocation + "x5s.npy")
+    print("x5: ",  x5)
+    print("KAKA: ", kaka)
+    '''
+
     #----------------------------------------
     svi_nnmf = NNMF(ratingMatrix.copy())
     ucb = BanditChoice()
@@ -318,6 +328,8 @@ if __name__ == '__main__':
     plt.ylabel(yLabel)
     plt.title(modelString1)
     plt.savefig("/home/soon/Desktop/SviNnmfUcbChoicesMean.png")
+    np.save(fileLocation + "x1.npy", x1)
+    np.save(fileLocation + "y1s.npy", y1s)
     plt.clf()
     #----------------------------------------
     nnmf_vanilla = NNMFVanilla(ratingMatrix.copy())
@@ -344,6 +356,8 @@ if __name__ == '__main__':
     plt.ylabel(yLabel)
     plt.title(modelString6)
     plt.savefig("/home/soon/Desktop/SviNnmfVanillaMean.png")
+    np.save(fileLocation + "x6.npy", x6)
+    np.save(fileLocation + "y6s.npy", y6s)
     plt.clf()
     #----------------------------------------
     svi_nnmf = NNMF(ratingMatrix.copy())
@@ -370,6 +384,8 @@ if __name__ == '__main__':
     plt.ylabel(yLabel)
     plt.title(modelString2)
     plt.savefig("/home/soon/Desktop/SviNnmfEpsilonGreedyChoicesMean.png")
+    np.save(fileLocation + "x2.npy", x2)
+    np.save(fileLocation + "y2s.npy", y2s)
     plt.clf()
     #----------------------------------------
     um = UncertaintyModel(ratingMatrix.copy())
@@ -387,6 +403,8 @@ if __name__ == '__main__':
     plt.ylabel(yLabel)
     plt.title(modelString3)
     plt.savefig("/home/soon/Desktop/randomChoices.png")
+    np.save(fileLocation + "x3.npy", x3)
+    np.save(fileLocation + "y3s.npy", y3s)
     plt.clf()
     #----------------------------------------
     um = UncertaintyModel(ratingMatrix.copy())
@@ -404,6 +422,8 @@ if __name__ == '__main__':
     plt.ylabel(yLabel)
     plt.title(modelString4)
     plt.savefig("/home/soon/Desktop/worstChoices.png")
+    np.save(fileLocation + "x4.npy", x4)
+    np.save(fileLocation + "y4s.npy", y4s)
     plt.clf()
     #----------------------------------------
     modelString = "All Models"
