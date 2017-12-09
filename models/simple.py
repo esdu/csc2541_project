@@ -9,7 +9,8 @@ except Exception:
 class SimpleMatrixFactorization:
     def __init__(self, ratings_matrix, hidden_dim=30,
                  batch_size=200, n_samples=1, pR_stddev=1.,
-                 lr_init=0.1, lr_decay_steps=200, lr_decay_rate=0.99):
+                 lr_init=0.1, lr_decay_steps=200, lr_decay_rate=0.99,
+                 BERN=False):
         """
         Computes R = UV' with SVI.
 
@@ -46,7 +47,12 @@ class SimpleMatrixFactorization:
         U_selected = tf.gather(self.U, self.idx_i)
         V_selected = tf.gather(self.V, self.idx_j)
         means = tf.reduce_sum(tf.multiply(U_selected, V_selected), axis=1)
-        self.R = ed.models.Normal(loc=means, scale=pR_stddev*tf.ones(self.batch_size))
+        if BERN:
+            self.R = ed.models.TransformedDistribution(
+              distribution=ed.models.Bernoulli(logits=means, dtype=tf.float32),#ds.Normal(loc=0., scale=1.),
+              bijector=tf.contrib.distributions.bijectors.Affine(shift=1.))
+        else:
+            self.R = ed.models.Normal(loc=means, scale=pR_stddev*tf.ones(self.batch_size))
 
         # VI
         self.qU = ed.models.Normal(loc=tf.Variable(tf.zeros([N, D])),
@@ -70,7 +76,10 @@ class SimpleMatrixFactorization:
 
         self.qU_samples = tf.gather(self.qU.sample(self.n_test_samples), self.test_idx_i, axis=1)
         self.qV_samples = tf.gather(self.qV.sample(self.n_test_samples), self.test_idx_j, axis=1)
-        self.sample_rhats = tf.reduce_sum(tf.multiply(self.qU_samples, self.qV_samples), axis=-1)
+        if BERN:
+            self.sample_rhats = tf.sigmoid(tf.reduce_sum(tf.multiply(self.qU_samples, self.qV_samples), axis=-1)) + 1
+        else:
+            self.sample_rhats = tf.reduce_sum(tf.multiply(self.qU_samples, self.qV_samples), axis=-1)
 
         # for Validation
         self.r_map_estimates = tf.reduce_mean(tf.squeeze(self.sample_rhats), axis=0)

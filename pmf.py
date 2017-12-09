@@ -29,10 +29,15 @@ class PMF(UncertaintyModel):
             #    self.ratingMatrix,
             #    hidden_dim=70, # To match NNMF 60 + 10 hidden dims.
             #    batch_size=200, n_samples=10, pR_stddev=1.)
+            #self.model = _PMF(
+            #    self.ratingMatrix,
+            #    hidden_dim=20,
+            #    batch_size=1000, n_samples=10, pR_stddev=1.)
             self.model = _PMF(
                 self.ratingMatrix,
-                hidden_dim=20, # To match NNMF 60 + 10 hidden dims.
-                batch_size=1000, n_samples=10, pR_stddev=1.)
+                hidden_dim=40,
+                batch_size=200, n_samples=10, pR_stddev=1.,
+                lr_init=0.01)
 
     def save(self, fname):
         with self.sess.as_default():
@@ -60,3 +65,21 @@ class PMF(UncertaintyModel):
         # return (k, m) matrix of k samples for user i
         with self.sess.as_default():
             return self.model.sample_user_ratings(user_index, num_samples)
+
+class PMFBern(PMF):
+    def reset(self, seed=None):
+        tf.reset_default_graph()
+        if seed is not None:
+            ed.set_seed(seed) # sets seed for both tf and numpy
+
+        if self.sess is not None:
+            self.sess.close()
+        self.sess = tf.Session()
+
+        with self.sess.as_default():
+            self.model = _PMF(
+                self.ratingMatrix,
+                hidden_dim=40,
+                batch_size=200, n_samples=10, pR_stddev=1.,
+                lr_init=0.01,
+                BERN=True)
