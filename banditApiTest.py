@@ -19,14 +19,14 @@ from sclrecommender.analyzer import MatrixAnalyzer
 from sclrecommender.transform import MatrixTransform
 
 from sclrecommender.parser import ExampleParser
-from sclrecommender.parser import MovieLensParser100k
+from sclrecommender.parser import MovieLensParser
 
 from sclrecommender.bandit.runner import BanditRunner
 
 #from sclrecommender.bandit.model import UncertaintyModel
 from uncertaintyModel import UncertaintyModel
 from nnmf import NNMF # Distribution SVI NNMF
-from nnmf_vanilla import NNMFVanilla # NNMFVanilla with point estimates
+from nnmf_vanilla import NNMFVanilla # NNMF vanilla with point estimates
 
 from banditChoice import BanditChoice # UCB
 from banditChoice2 import BanditChoice2 # Epsilon Greedy
@@ -105,7 +105,7 @@ def runAll(nnmf, ucb, ratingMatrix, trainMatrix, testMatrix, modelName):
     pprint(legalTrainMask)
     pprint(legalTestMask)
 
-    banditRunner = BanditRunner(ratingMatrix.copy(), legalTrainMask.copy(), legalTestMask.copy(), modelName)
+    banditRunner = BanditRunner(ratingMatrix.copy(), legalTrainMask.copy(), legalTestMask.copy())
     banditRunner.setUncertaintyModel(nnmf)
     banditRunner.setBanditChoice(ucb)
     
@@ -137,8 +137,8 @@ def runAll(nnmf, ucb, ratingMatrix, trainMatrix, testMatrix, modelName):
     k = 10 # number of items for each user is 20, so should be less than 20 so recall not guaranteed to be 1
 
     #-----------------------------------------------------------------------
-    tempMaxNumUser = 50 # TODO TEMPORARY, FOLLOWS NUMBER IN BANDIT RUNNER
-    tempMaxNumItem = 30 # for printing ranking matrix
+    tempMaxNumUser = 20 # TODO TEMPORARY, FOLLOWS NUMBER IN BANDIT RUNNER
+    tempMaxNumItem = 20 # for printing ranking matrix
     print("TEMP SHRINK TO tempMaxNumUser!")
     print(ratingMatrix.shape)
     ratingMatrix = ratingMatrix[:tempMaxNumUser]
@@ -227,7 +227,7 @@ if __name__ == '__main__':
     # Step 1: Get data based on dataset specific parser
     # dataDirectory = "sclrecommender/data/movielens/ml-100k"
     dataDirectory ="ml-100k"
-    mlp = MovieLensParser100k(dataDirectory)
+    mlp = MovieLensParser(dataDirectory)
     numUser = 10 
     numItem = 10
     exParser = ExampleParser(dataDirectory)
@@ -236,7 +236,7 @@ if __name__ == '__main__':
     ratingMatrix = mlp.getRatingMatrixCopy()
 
     # Remove the users that are too hot
-    ratingMatrix = MatrixTransform(ratingMatrix).coldUsers(830)
+    ratingMatrix = MatrixTransform(ratingMatrix).coldUsers(800)
     # Sort by users that are hot
     ratingMatrix = MatrixTransform(ratingMatrix).hotUsers()
 
@@ -247,7 +247,7 @@ if __name__ == '__main__':
     matrixAnalyzer.summarize()
 
     # Step 4: Split rating matrix to train and test
-    trainSplit = 0.70 # Assuming 200 items, 70 percent, will allow > 50 items to be explored in test
+    trainSplit = 0.8
 
     # Step 4.1: Choose splitting procedure
 
@@ -269,68 +269,6 @@ if __name__ == '__main__':
 
     xLabel = 'Exploration Number'
     yLabel = 'Cumulative Instantaneous Regret'
-
-    fileLocation = "/home/soon/Desktop/"
-    #----------------------------------------
-    um = UncertaintyModel(ratingMatrix.copy())
-    optimalChoice = OptimalChoice()
-    modelString5 = "Optimal"
-    x5s, y5s = runAll(um, optimalChoice, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString5)
-    currI = 0
-    for x5, y5 in zip(x5s, y5s):
-        plt.plot(x5, y5, label=modelString5 + str(currI))
-        currI += 1
-    x5 = x5s[0]
-    y5 = np.mean(y5s, axis = 0)
-    plt.legend(loc = 'upper left')
-    plt.xlabel(xLabel)
-    plt.ylabel(yLabel)
-    plt.title(modelString5)
-    plt.savefig(fileLocation + "optimalChoices.png")
-    plt.clf()
-    plt.plot(x5, y5, label=modelString5 + str(currI))
-    plt.legend(loc = 'upper left')
-    plt.xlabel(xLabel)
-    plt.ylabel(yLabel)
-    plt.title(modelString5)
-    plt.savefig(fileLocation + "optimalChoicesMean.png")
-    np.save(fileLocation + "x5.npy", x5)
-    np.save(fileLocation + "y5s.npy", y5s)
-    plt.clf()
-    '''
-    kaka = np.load(fileLocation + "x5s.npy")
-    print("x5: ",  x5)
-    print("KAKA: ", kaka)
-    '''
-
-    #----------------------------------------
-    svi_nnmf = NNMF(ratingMatrix.copy())
-    ucb = BanditChoice()
-    #svi_nnmf = UncertaintyModel(ratingMatrix.copy())
-    #ucb = RandomChoice()
-    modelString1 = "SVI_NNMF, UCB"
-    x1s, y1s = runAll(svi_nnmf, ucb, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString1)
-    currI = 0
-    for x1, y1 in zip(x1s, y1s):
-        plt.plot(x1, y1, label=modelString1 + str(currI))
-        currI += 1
-    x1 = x1s[0]
-    y1 = np.mean(y1s, axis = 0)
-    plt.legend(loc = 'upper left')
-    plt.xlabel(xLabel)
-    plt.ylabel(yLabel)
-    plt.title(modelString1)
-    plt.savefig("/home/soon/Desktop/SviNnmfUcbChoices.png")
-    plt.clf()
-    plt.plot(x1, y1, label=modelString1 + str(currI))
-    plt.legend(loc = 'upper left')
-    plt.xlabel(xLabel)
-    plt.ylabel(yLabel)
-    plt.title(modelString1)
-    plt.savefig("/home/soon/Desktop/SviNnmfUcbChoicesMean.png")
-    np.save(fileLocation + "x1.npy", x1)
-    np.save(fileLocation + "y1s.npy", y1s)
-    plt.clf()
     #----------------------------------------
     nnmf_vanilla = NNMFVanilla(ratingMatrix.copy())
     ucb = BanditChoice()
@@ -350,14 +288,24 @@ if __name__ == '__main__':
     plt.title(modelString6)
     plt.savefig("/home/soon/Desktop/nnmfVanilla.png")
     plt.clf()
-    plt.plot(x6, y6, label=modelString6 + str(currI))
+    #----------------------------------------
+    svi_nnmf = NNMF(ratingMatrix.copy())
+    ucb = BanditChoice()
+    #svi_nnmf = UncertaintyModel(ratingMatrix.copy())
+    #ucb = RandomChoice()
+    modelString1 = "SVI_NNMF, UCB"
+    x1s, y1s = runAll(svi_nnmf, ucb, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString1)
+    currI = 0
+    for x1, y1 in zip(x1s, y1s):
+        plt.plot(x1, y1, label=modelString1 + str(currI))
+        currI += 1
+    x1 = x1s[0]
+    y1 = np.mean(y1s, axis = 0)
     plt.legend(loc = 'upper left')
     plt.xlabel(xLabel)
     plt.ylabel(yLabel)
-    plt.title(modelString6)
-    plt.savefig("/home/soon/Desktop/SviNnmfVanillaMean.png")
-    np.save(fileLocation + "x6.npy", x6)
-    np.save(fileLocation + "y6s.npy", y6s)
+    plt.title(modelString1)
+    plt.savefig("/home/soon/Desktop/SviNnmfUcbChoices.png")
     plt.clf()
     #----------------------------------------
     svi_nnmf = NNMF(ratingMatrix.copy())
@@ -378,15 +326,6 @@ if __name__ == '__main__':
     plt.title(modelString2)
     plt.savefig("/home/soon/Desktop/SviNnmfEpsilonGreedyChoices.png")
     plt.clf()
-    plt.plot(x2, y2, label=modelString2 + str(currI))
-    plt.legend(loc = 'upper left')
-    plt.xlabel(xLabel)
-    plt.ylabel(yLabel)
-    plt.title(modelString2)
-    plt.savefig("/home/soon/Desktop/SviNnmfEpsilonGreedyChoicesMean.png")
-    np.save(fileLocation + "x2.npy", x2)
-    np.save(fileLocation + "y2s.npy", y2s)
-    plt.clf()
     #----------------------------------------
     um = UncertaintyModel(ratingMatrix.copy())
     rc = RandomChoice()
@@ -403,8 +342,6 @@ if __name__ == '__main__':
     plt.ylabel(yLabel)
     plt.title(modelString3)
     plt.savefig("/home/soon/Desktop/randomChoices.png")
-    np.save(fileLocation + "x3.npy", x3)
-    np.save(fileLocation + "y3s.npy", y3s)
     plt.clf()
     #----------------------------------------
     um = UncertaintyModel(ratingMatrix.copy())
@@ -422,8 +359,23 @@ if __name__ == '__main__':
     plt.ylabel(yLabel)
     plt.title(modelString4)
     plt.savefig("/home/soon/Desktop/worstChoices.png")
-    np.save(fileLocation + "x4.npy", x4)
-    np.save(fileLocation + "y4s.npy", y4s)
+    plt.clf()
+    #----------------------------------------
+    um = UncertaintyModel(ratingMatrix.copy())
+    optimalChoice = OptimalChoice()
+    modelString5 = "Optimal"
+    x5s, y5s = runAll(um, optimalChoice, ratingMatrix.copy(), trainMatrix.copy(), testMatrix.copy(), modelString5)
+    currI = 0
+    for x5, y5 in zip(x5s, y5s):
+        plt.plot(x5, y5, label=modelString5 + str(currI))
+        currI += 1
+    x5 = x5s[0]
+    y5 = np.mean(y5s, axis = 0)
+    plt.legend(loc = 'upper left')
+    plt.xlabel(xLabel)
+    plt.ylabel(yLabel)
+    plt.title(modelString5)
+    plt.savefig("/home/soon/Desktop/optimalChoices.png")
     plt.clf()
     #----------------------------------------
     modelString = "All Models"
