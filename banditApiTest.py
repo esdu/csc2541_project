@@ -20,6 +20,7 @@ from sclrecommender.transform import MatrixTransform
 
 from sclrecommender.parser import ExampleParser
 from sclrecommender.parser import MovieLensParser100k
+from sclrecommender.parser import MovieLensParser1m
 
 from sclrecommender.bandit.runner import BanditRunner
 
@@ -227,12 +228,16 @@ if __name__ == '__main__':
     # Step 1: Get data based on dataset specific parser
     # dataDirectory = "sclrecommender/data/movielens/ml-100k"
     dataDirectory ="ml-100k"
-    mlp = MovieLensParser100k(dataDirectory)
+    #mlp = MovieLensParser100k(dataDirectory)
+
     numUser = 10 
     numItem = 10
-    exParser = ExampleParser(dataDirectory)
+    exParser = ExampleParser("")
     ratingMatrix = exParser.getRatingMatrix(numUser, numItem)
     ratingMatrix[0][0] = 1.0
+
+    dataDirectory ="ml-1m"
+    mlp = MovieLensParser1m(dataDirectory)
     ratingMatrix = mlp.getRatingMatrixCopy()
 
     # Remove the users that are too hot
