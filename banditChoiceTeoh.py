@@ -1,10 +1,12 @@
 import numpy as np
 import random
 
-class BanditChoiceTeoh(object, lam=1.0):
-    def __init__(self):
+class BanditChoiceTeoh(object):
+    def __init__(self, lam=1.0, begin=0.0, end=6.0):
         self.lam = lam
-
+        self.begin = begin
+        self.end = end
+        
     def evaluate(self, posteriorMatrix, legalItemVector):
 
         user_indices = np.array(range(len(legalItemVector)))
@@ -30,7 +32,7 @@ class BanditChoiceTeoh(object, lam=1.0):
     def empirical_entropy(self, samples, num_bins=12):
         # histogram method
         # put variables into 6/(num_bins)-width bins from 0 to 5
-        bounds = np.linspace(0,6,num_bins+1)
+        bounds = np.linspace(self.begin,self.end,num_bins+1)
         frequencies = np.zeros((num_bins, samples.shape[1]))
         num_samples = samples.shape[0]
         for i in range(num_bins):
