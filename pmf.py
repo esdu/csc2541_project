@@ -80,6 +80,6 @@ class PMFBern(PMF):
             self.model = _PMF(
                 self.ratingMatrix,
                 hidden_dim=40,
-                batch_size=200, n_samples=10, pR_stddev=1.,
+                batch_size=200, n_samples=10, pR_stddev=2.,
                 lr_init=0.01,
                 BERN=True)

@@ -121,8 +121,8 @@ def prepare_test_users(R, NUM_USERS_DENSE = 20, NUM_USERS_SPARS = 20, PERC_DROP 
 
     return dense_users, spars_users, train_mask, test_masks
 
-def prepare_test_users_sampled(R, NUM_USERS_DENSE = 5, NUM_USERS_SPARS = 5, PERC_DROP = 0.3, sample_range = 50):
-    np.random.seed(1337)
+def prepare_test_users_sampled(R, NUM_USERS_DENSE = 5, NUM_USERS_SPARS = 5, PERC_DROP = 0.3, sample_range = 50, seed=1337):
+    np.random.seed(seed)
     
     rating_density_per_user = list(zip(np.sum(R>0, axis=1), range(R.shape[0])))
     

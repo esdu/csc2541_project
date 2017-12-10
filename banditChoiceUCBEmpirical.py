@@ -2,8 +2,8 @@ import numpy as np
 import random
 
 class BanditChoiceUCBEmpirical(object):
-    def __init__(self):
-        pass
+    def __init__(self, alpha):
+        self.alpha=alpha
 
     def evaluate(self, posteriorMatrix, legalItemVector):
 
@@ -17,7 +17,7 @@ class BanditChoiceUCBEmpirical(object):
 
     def get_ucb_empirical(self, user_ratings, user_indices):
         #select based on argmax(mean+std)
-        alpha = 1.0
+        alpha = self.alpha
 
         mean_ratings = np.mean(user_ratings,axis=0)
         std_ratings = np.std(user_ratings,axis=0)
