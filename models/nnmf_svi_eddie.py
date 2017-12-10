@@ -337,7 +337,7 @@ class NNMF:
         # Misc #
         ########
 
-        self.saver = tf.train.Saver()
+        self.saver = tf.train.Saver(max_to_keep=0)
 
 
     def sample_user_ratings(self, user_index, n_samples=100):
