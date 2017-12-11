@@ -17,14 +17,14 @@ class BanditChoiceBoltzmann(object):
 
 
     def get_boltzmann_exploration(self, user_ratings, user_indices, tau=0.1):
-        # also known as softmax exploration
         # tau - temperature parameter, if 0 -> greedy selection
+        temp_scaled = [x/tau for x in np.mean(user_ratings,axis=0)]
+        denom = np.sum(np.exp(temp_scaled))
+        boltzmann_prob = [np.exp(x)/denom for x in temp_scaled]
 
-        temp_scale = [x/tau for x in np.mean(user_ratings,axis=0)]
-        denom = np.sum(np.exp(temp_scale))
-        boltzmann_prob = [np.exp(x)/denom for x in temp_scale]
-
-        idx = np.argmax(boltzmann_prob)
+        indices = list(range(len(boltzmann_prob)))
+        idx = np.random.choice(indices,p=boltzmann_prob)
+        # idx = np.argmax(boltzmann_prob)
         selected_item = user_indices[idx]
 
         return selected_item
